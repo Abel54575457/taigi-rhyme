@@ -1,0 +1,17 @@
+# Environment & API keys
+.env
+*.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Temporary / Scratch
+test_kua.db
+*.log

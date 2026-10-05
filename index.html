@@ -1,0 +1,2407 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>台語押韻與寫歌 AI 創作工作台 - 13大通押韻部與教育部辭典</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700;900&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans TC"', 'sans-serif'],
+            serif: ['"Noto Serif TC"', 'serif'],
+          },
+          colors: {
+            taigi: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              500: '#14b8a6',
+              600: '#0d9488',
+              700: '#0f766e',
+              800: '#115e59',
+              900: '#134e4a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* 韻部徽章色彩方案 */
+    .badge-OPEN_A { background-color: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+    .badge-OPEN_E { background-color: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+    .badge-OPEN_I { background-color: #f0fdfa; color: #0f766e; border-color: #99f6e4; }
+    .badge-OPEN_O { background-color: #ecfeff; color: #0e7490; border-color: #a5f3fc; }
+    .badge-OPEN_U { background-color: #f0f9ff; color: #0369a1; border-color: #bae6fd; }
+    .badge-COMPOUND_AU { background-color: #fffbeb; color: #b45309; border-color: #fde68a; }
+    .badge-COMPOUND_AI { background-color: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+    .badge-NASAL_AN { background-color: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+    .badge-NASAL_EN { background-color: #eef2ff; color: #4338ca; border-color: #c7d2fe; }
+    .badge-NASAL_ON { background-color: #f5f3ff; color: #6d28d9; border-color: #ddd6fe; }
+    .badge-STOP_AT { background-color: #fff1f2; color: #be123c; border-color: #fecdd3; }
+    .badge-STOP_ET { background-color: #fdf2f8; color: #be185d; border-color: #fbcfe8; }
+    .badge-STOP_OK { background-color: #faf5ff; color: #7e22ce; border-color: #e9d5ff; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
+
+  <!-- 頂部主導航列 -->
+  <header class="bg-gradient-to-r from-taigi-900 via-taigi-800 to-slate-900 text-white shadow-lg sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+      
+      <!-- 標題與品牌 -->
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-taigi-500 flex items-center justify-center text-slate-900 shadow-md">
+          <i class="fa-solid fa-music text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight font-serif flex items-center gap-2">
+            台語押韻與寫歌 AI 創作工作台
+            <span class="text-xs font-sans px-2 py-0.5 rounded-full bg-taigi-600/60 border border-taigi-400/40 text-taigi-100 font-normal">
+              13大通押部 + 教育部2.8萬詞庫
+            </span>
+          </h1>
+          <p class="text-xs text-slate-300">智慧檢測・尾字換詞・前後句互換・文意連貫</p>
+        </div>
+      </div>
+
+      <!-- 右側動作按鈕 -->
+      <div class="flex items-center space-x-3">
+        <button onclick="openApiKeyModal()" class="px-3 py-1.5 text-xs rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-600 text-slate-200 flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-key text-amber-400"></i>
+          <span>Gemini AI 設定</span>
+        </button>
+        <button onclick="exportLyrics()" class="px-3 py-1.5 text-xs rounded-lg bg-taigi-600 hover:bg-taigi-500 text-white font-medium flex items-center gap-1.5 transition shadow">
+          <i class="fa-solid fa-download"></i>
+          <span>匯出歌詞</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- 頁籤導覽列 (Tabs) -->
+    <div class="bg-taigi-950/60 border-t border-taigi-800/40">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1">
+        <button onclick="switchTab('studio')" id="tab-btn-studio" class="tab-btn px-4 py-2.5 text-sm font-medium border-b-2 border-taigi-400 text-taigi-300 flex items-center gap-2 transition">
+          <i class="fa-solid fa-feather-pointed"></i> 寫歌工作台
+        </button>
+        <button onclick="switchTab('assistant')" id="tab-btn-assistant" class="tab-btn px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 transition">
+          <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> AI 換字換句助手
+        </button>
+        <button onclick="switchTab('dictionary')" id="tab-btn-dictionary" class="tab-btn px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 transition">
+          <i class="fa-solid fa-book-bookmark"></i> 教育部辭典押韻反查
+        </button>
+        <button onclick="switchTab('guide')" id="tab-btn-guide" class="tab-btn px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 transition">
+          <i class="fa-solid fa-circle-info"></i> 13大通押韻部指南
+        </button>
+        <button onclick="switchTab('corpus')" id="tab-btn-corpus" class="tab-btn px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 transition">
+          <i class="fa-solid fa-scroll text-amber-400"></i> 歌仔冊參考寶庫
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主內容容器 -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+
+    <!-- ========================================== -->
+    <!-- TAB 1: 寫歌工作台 (Lyric Studio) -->
+    <!-- ========================================== -->
+    <div id="tab-studio" class="tab-content space-y-6">
+
+      <!-- 統計摘要看板 (Metrics Bar) -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+          <div class="w-12 h-12 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-600 text-xl font-bold">
+            <i class="fa-solid fa-bullseye"></i>
+          </div>
+          <div>
+            <div class="text-xs text-slate-500 font-medium">整體押韻率</div>
+            <div class="text-2xl font-bold text-slate-800" id="stat-rhyme-rate">0%</div>
+            <div class="text-xs text-slate-400" id="stat-rhyme-count">0 / 0 行押韻</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+          <div class="w-12 h-12 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 text-xl">
+            <i class="fa-solid fa-layer-group"></i>
+          </div>
+          <div>
+            <div class="text-xs text-slate-500 font-medium">主押韻部 (Primary)</div>
+            <div class="text-lg font-bold text-blue-700 truncate" id="stat-primary-group">未檢測</div>
+            <div class="text-xs text-slate-500 truncate" id="stat-primary-desc">輸入歌詞自動判定</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+          <div class="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 text-xl">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+          <div>
+            <div class="text-xs text-slate-500 font-medium">出韻／待換句提示</div>
+            <div class="text-2xl font-bold text-amber-600" id="stat-warning-count">0 行</div>
+            <div class="text-xs text-slate-400">點擊可直接 AI 改寫</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+          <div class="w-12 h-12 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 text-xl">
+            <i class="fa-solid fa-font"></i>
+          </div>
+          <div>
+            <div class="text-xs text-slate-500 font-medium">有效句數 / 總行數</div>
+            <div class="text-2xl font-bold text-slate-800" id="stat-lines-count">0 / 0</div>
+            <div class="text-xs text-slate-400">支援漢羅、全漢、全台羅</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 寫歌雙欄編輯與即時分析區 -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- 左欄：歌詞輸入與載入範例 (5/12) -->
+        <div class="lg:col-span-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[650px]">
+          <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-taigi-500"></span>
+              <h2 class="font-bold text-slate-800 text-base">歌詞創作編輯器</h2>
+            </div>
+            
+            <!-- 載入範例下拉選單 -->
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-400">載入範例：</span>
+              <select id="sample-selector" onchange="loadSampleLyrics(this.value)" class="text-xs bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-slate-700 focus:outline-none focus:ring-1 focus:ring-taigi-500">
+                <option value="empty">-- 自由創作 (空白) --</option>
+                <option value="stanza_green">🟢 周定邦格律：舒聲 1、5最好（完全合律・綠燈）</option>
+                <option value="stanza_stop4848">🟢 周定邦格律：入聲 4 8 4 8（入聲專門・綠燈）</option>
+                <option value="stanza_yellow">🟡 周定邦格律：寬容合格 7/8聲（唱腔順音・黃燈）</option>
+                <option value="stanza_red">🔴 周定邦格律：禁用降調 2/3/4聲（唱腔下墜・紅燈）</option>
+                <option value="stanza_red_rhyme">🔴 核心失韻（韻腹不合・紅燈）</option>
+                <option value="bangkshunhong">望春風四句聯 (OPEN_E韻)</option>
+                <option value="kiahau">江蕙《家後》精選 (OPEN_E/I韻)</option>
+                <option value="longtshuhitau">茄子蛋《浪子回頭》精選 (OPEN_A/AN韻)</option>
+                <option value="amauêue">蕭煌奇《阿嬤的話》精選 (OPEN_I韻)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 編輯區文字框 -->
+          <div class="relative flex-1 mt-3">
+            <textarea id="lyrics-input" 
+                      placeholder="請在此輸入或貼上台語歌詞（支援全漢字、全台羅、或漢羅合用）...&#10;系統會即時檢測每句尾字韻腳、分析 13 大通押韻部並提示出韻行！"
+                      oninput="onLyricsChange()" 
+                      class="w-full h-full p-4 font-serif text-lg leading-relaxed text-slate-800 bg-slate-50/50 border border-slate-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-taigi-500 focus:bg-white transition"></textarea>
+          </div>
+
+          <div class="pt-3 flex justify-between items-center text-xs text-slate-400 border-t border-slate-100 mt-2">
+            <span>支援標記 [主歌]、[副歌] 或 Verse、Chorus，系統將自動跳過標題分析</span>
+            <button onclick="clearLyrics()" class="text-slate-400 hover:text-rose-500 transition">
+              <i class="fa-regular fa-trash-can mr-1"></i>清空內容
+            </button>
+          </div>
+        </div>
+
+        <!-- 右欄：逐行押韻即時分析與引導 (6/12) -->
+        <div class="lg:col-span-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[650px]">
+          <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+              <h2 class="font-bold text-slate-800 text-base">逐行押韻即時檢測報告</h2>
+            </div>
+            <div class="text-xs text-slate-400">
+              點擊任一行的「<i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i> AI改寫」立即跳轉助手
+            </div>
+          </div>
+
+          <!-- 四句聯三級機制評審看板 (綠燈/黃燈/紅燈) -->
+          <div id="stanza-traffic-lights-container" class="space-y-3 mt-3 mb-2 flex-shrink-0"></div>
+
+          <!-- 逐行分析卡片捲動清單 -->
+          <div id="lines-analysis-container" class="flex-1 overflow-y-auto space-y-2.5 pr-1">
+            <div class="h-full flex flex-col items-center justify-center text-slate-300 py-12">
+              <i class="fa-solid fa-music text-5xl mb-3 text-slate-200"></i>
+              <p class="text-sm">在左側輸入歌詞，右側將即時顯示各句韻部分析</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: AI 換字換句靈感助手 (AI Assistant) -->
+    <!-- ========================================== -->
+    <div id="tab-assistant" class="tab-content hidden space-y-6">
+
+      <!-- 焦點行資訊橫幅 (Current Target Line Card) -->
+      <div class="bg-gradient-to-r from-taigi-800 to-slate-900 rounded-2xl p-6 text-white shadow-md">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-taigi-700/60 pb-4">
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="px-2.5 py-1 rounded-md bg-amber-400/20 border border-amber-400/40 text-amber-300 text-xs font-medium">
+                <i class="fa-solid fa-pen-nib mr-1"></i>第 <span id="focus-line-num">1</span> 行
+              </span>
+              <span id="focus-role-badge" class="px-2.5 py-1 rounded-md bg-blue-500/20 border border-blue-400/40 text-blue-300 text-xs font-medium">
+                四句聯角色：韻跤句
+              </span>
+            </div>
+            <h2 class="text-2xl font-serif font-bold mt-2" id="focus-line-text">尚未選擇歌詞行</h2>
+          </div>
+
+          <!-- 目標韻部切換選單 -->
+          <div class="flex items-center gap-2 bg-slate-800/80 p-2 rounded-xl border border-slate-700">
+            <span class="text-xs text-slate-300">目標押韻部：</span>
+            <select id="assistant-target-rhyme" onchange="onTargetRhymeChanged()" class="bg-slate-900 text-white border border-taigi-500 rounded-lg px-2.5 py-1 text-sm font-medium focus:outline-none">
+              <!-- 動態生成 13 大韻部選項 -->
+            </select>
+          </div>
+        </div>
+
+        <!-- 前後文預覽列 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-xs">
+          <div class="bg-slate-800/60 p-3 rounded-xl border border-slate-700/50">
+            <div class="text-slate-400 mb-1"><i class="fa-solid fa-arrow-up mr-1"></i>上一句：</div>
+            <div class="font-serif text-sm text-slate-200" id="focus-prev-text">（無上一句）</div>
+          </div>
+          <div class="bg-slate-800/60 p-3 rounded-xl border border-slate-700/50">
+            <div class="text-slate-400 mb-1"><i class="fa-solid fa-arrow-down mr-1"></i>下一句：</div>
+            <div class="font-serif text-sm text-slate-200" id="focus-next-text">（無下一句）</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 四大改寫功能面板 (Grid) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- 建議維度 1：尾字/尾詞智慧替換 (6/12) -->
+        <div class="lg:col-span-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 text-teal-600 flex items-center justify-center font-bold text-sm">
+                🔤
+              </div>
+              <div>
+                <h3 class="font-bold text-slate-800 text-base">換尾字／尾詞（依文意與韻腳）</h3>
+                <p class="text-xs text-slate-400">系統自動將直接符合的聲調挑出並置頂，選字不用再自行判斷</p>
+              </div>
+            </div>
+            <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium" id="word-cand-count">0 個建議</span>
+          </div>
+
+          <!-- 角色聲調指引橫幅 -->
+          <div id="assistant-tone-guide-banner" class="mt-3 p-3 rounded-xl text-xs bg-amber-50/80 border border-amber-200 text-amber-900 space-y-1">
+            <div class="font-bold flex items-center gap-1.5" id="tone-guide-title">
+              <i class="fa-solid fa-lightbulb text-amber-500"></i> 周定邦老師格律：降的不用，1、5 最好！
+            </div>
+            <div class="text-amber-800 text-[11px]" id="tone-guide-tip">
+              第 2、4 句（韻跤）嚴禁第 2、3、4 聲降調；最優為第 1、5 聲，第 7、8 聲為寬容合格。第 1、3 句採自由發揮！
+            </div>
+          </div>
+
+          <!-- 建議聲調快捷篩選工具列 -->
+          <div class="mt-3 flex flex-wrap items-center gap-1.5 text-xs pb-2 border-b border-slate-100">
+            <span class="text-slate-500 font-medium mr-1"><i class="fa-solid fa-filter text-taigi-500 mr-1"></i>聲調篩選：</span>
+            <button id="tone-filter-btn-recommended" onclick="setToneFilter('recommended')" class="px-2.5 py-1 rounded-lg font-medium transition bg-taigi-600 text-white shadow-sm flex items-center gap-1">
+              <span>🌟 合律推薦 (排除降調)</span>
+            </button>
+            <button id="tone-filter-btn-optimal" onclick="setToneFilter('optimal_1_5')" class="px-2.5 py-1 rounded-lg font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1">
+              <span>1、5最好 (最優)</span>
+            </button>
+            <button id="tone-filter-btn-acceptable" onclick="setToneFilter('acceptable_7_8')" class="px-2.5 py-1 rounded-lg font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1">
+              <span>合格 (7/8聲)</span>
+            </button>
+            <button id="tone-filter-btn-all" onclick="setToneFilter('all')" class="px-2.5 py-1 rounded-lg font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-700">
+              全部聲調
+            </button>
+            <div id="dynamic-tone-filters" class="flex items-center gap-1"></div>
+          </div>
+
+          <div id="word-suggestions-list" class="space-y-3 mt-3 max-h-[440px] overflow-y-auto pr-1">
+            <div class="text-center text-slate-400 py-12 text-sm">請先在工作台點選任一行進行建議分析</div>
+          </div>
+        </div>
+
+        <!-- 建議維度 2：前後句互換、倒裝與接龍 (6/12) -->
+        <div class="lg:col-span-6 space-y-6">
+
+          <!-- 2A: 前後句互換／改換上一句 -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex items-center gap-2 pb-3 border-b border-slate-100">
+              <div class="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center font-bold text-sm">
+                🔄
+              </div>
+              <div>
+                <h3 class="font-bold text-slate-800 text-base">前後句互換（改上一句以遷就本句）</h3>
+                <p class="text-xs text-slate-400">不想改當前句？改寫上一句讓兩句完美押韻</p>
+              </div>
+            </div>
+
+            <div id="prev-line-alternatives-list" class="space-y-2.5 mt-3">
+              <div class="text-center text-slate-400 py-6 text-sm">尚無上一句或暫無互換建議</div>
+            </div>
+          </div>
+
+          <!-- 2B: 倒裝句與句末加襯 -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex items-center gap-2 pb-3 border-b border-slate-100">
+              <div class="w-8 h-8 rounded-lg bg-purple-50 border border-purple-200 text-purple-600 flex items-center justify-center font-bold text-sm">
+                🔀
+              </div>
+              <div>
+                <h3 class="font-bold text-slate-800 text-base">台語句型倒裝與加襯調整</h3>
+                <p class="text-xs text-slate-400">重構詞序將關鍵押韻詞移至句尾，增添歌謠韻味</p>
+              </div>
+            </div>
+
+            <div id="inversion-suggestions-list" class="space-y-2.5 mt-3">
+              <div class="text-center text-slate-400 py-6 text-sm">暫無倒裝建議</div>
+            </div>
+          </div>
+
+          <!-- 2C: 下句靈感接龍 -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex items-center gap-2 pb-3 border-b border-slate-100">
+              <div class="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center font-bold text-sm">
+                🎶
+              </div>
+              <div>
+                <h3 class="font-bold text-slate-800 text-base">下一句靈感接龍（承接文意與同韻）</h3>
+                <p class="text-xs text-slate-400">自動生成押同韻且符合情境的承接對偶句</p>
+              </div>
+            </div>
+
+            <div id="next-line-continuations-list" class="space-y-2.5 mt-3">
+              <div class="text-center text-slate-400 py-6 text-sm">暫無下句接龍建議</div>
+            </div>
+          </div>
+
+          <!-- 2E: 歌仔冊同韻同主題經典句借鑑 -->
+          <div class="bg-white p-5 rounded-2xl border border-amber-200/90 shadow-sm">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center font-bold text-sm">
+                  📜
+                </div>
+                <div>
+                  <h3 class="font-bold text-slate-800 text-base">歌仔冊同韻同主題經典四句聯</h3>
+                  <p class="text-xs text-slate-400">參考歌仔冊傳統句型、對偶與意境，點擊「引用」可借鑑為歌詞</p>
+                </div>
+              </div>
+              <button onclick="switchTab('corpus')" class="text-xs text-taigi-600 hover:text-taigi-700 font-medium flex items-center gap-1">
+                <span>前往文庫</span><i class="fa-solid fa-arrow-right"></i>
+              </button>
+            </div>
+
+            <div id="kua-references-list" class="space-y-3 mt-3 max-h-[380px] overflow-y-auto pr-1">
+              <div class="text-center text-slate-400 py-6 text-sm">點選任一行後，自動檢索文庫同韻四句聯</div>
+            </div>
+          </div>
+
+          <!-- 2D: Gemini AI 雲端詩意潤飾生成 (可選) -->
+          <div class="bg-slate-900 text-white p-5 rounded-2xl border border-slate-700 shadow-sm">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-700">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-microchip text-amber-400 text-lg"></i>
+                <div>
+                  <h3 class="font-bold text-sm">Gemini AI 大模型深度詩意潤飾</h3>
+                  <p class="text-xs text-slate-400">以頂級大模型依前後文生成高難度詩意對偶句</p>
+                </div>
+              </div>
+              <button onclick="requestGeminiGeneration()" id="btn-gemini-generate" class="px-3 py-1 text-xs rounded-lg bg-taigi-600 hover:bg-taigi-500 text-white font-medium flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-sparkles"></i> 啟動 AI 創作
+              </button>
+            </div>
+
+            <div id="gemini-result-container" class="mt-3 text-xs text-slate-300 leading-relaxed font-serif whitespace-pre-line bg-slate-800/80 p-3 rounded-xl border border-slate-700/60 min-h-[60px]">
+              點選「啟動 AI 創作」（需在上方設定 API Key），AI 將針對這一段歌詞提供文言/白話深度改寫建議。
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: 教育部辭典押韻反查 (Dictionary) -->
+    <!-- ========================================== -->
+    <div id="tab-dictionary" class="tab-content hidden space-y-6">
+
+      <!-- 13 大通押韻部快捷切換列 -->
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="text-xs font-medium text-slate-500 mb-2 flex items-center justify-between">
+          <span><i class="fa-solid fa-tags text-taigi-600 mr-1"></i>依 13 大通押部快速篩選：</span>
+          <span class="text-slate-400 text-xs">教育部常用詞辭典 28,695 條收錄</span>
+        </div>
+        <div class="flex flex-wrap gap-1.5" id="dict-rhyme-tags">
+          <!-- 動態生成 13 部標籤按鈕 -->
+        </div>
+      </div>
+
+      <!-- 複合條件篩選工具列 -->
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center gap-3">
+        
+        <!-- 字數篩選 -->
+        <div class="flex items-center gap-1.5 text-xs text-slate-600">
+          <span>字數：</span>
+          <select id="dict-filter-chars" onchange="loadDictionaryWords(0)" class="bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-xs focus:ring-1 focus:ring-taigi-500">
+            <option value="">全部字數</option>
+            <option value="1">單字 (1字)</option>
+            <option value="2">雙字詞 (2字)</option>
+            <option value="3">三字詞 (3字)</option>
+            <option value="4">四字詞/成語 (4字)</option>
+          </select>
+        </div>
+
+        <!-- 聲調篩選 -->
+        <div class="flex items-center gap-1.5 text-xs text-slate-600">
+          <span>聲調：</span>
+          <select id="dict-filter-tone" onchange="loadDictionaryWords(0)" class="bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-xs focus:ring-1 focus:ring-taigi-500 font-medium">
+            <option value="">全部聲調</option>
+            <option value="1,5,7,8" class="font-bold text-taigi-700 bg-taigi-50">🌟 1.5.7.8 調 (合律韻跤・排除降調)</option>
+            <option value="1,5">🌟 1.5 調 (最優聲調)</option>
+            <option value="1">第 1 調 (陰平)</option>
+            <option value="2">第 2 調 (陰上)</option>
+            <option value="3">第 3 調 (陰去)</option>
+            <option value="4">第 4 調 (陰入)</option>
+            <option value="5">第 5 調 (陽平)</option>
+            <option value="7">第 7 調 (陽去)</option>
+            <option value="8">第 8 調 (陽入)</option>
+          </select>
+        </div>
+
+        <!-- 詞性篩選 -->
+        <div class="flex items-center gap-1.5 text-xs text-slate-600">
+          <span>詞性：</span>
+          <select id="dict-filter-pos" onchange="loadDictionaryWords(0)" class="bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-xs focus:ring-1 focus:ring-taigi-500">
+            <option value="">全部詞性</option>
+            <option value="名詞">名詞 (7,200+ 條)</option>
+            <option value="動詞">動詞 (4,200+ 條)</option>
+            <option value="形容詞">形容詞 (1,400+ 條)</option>
+            <option value="副詞">副詞 (430+ 條)</option>
+            <option value="熟語">熟語 (420+ 條)</option>
+            <option value="時間詞">時間詞 (160+ 條)</option>
+            <option value="量詞">量詞 (110+ 條)</option>
+            <option value="連詞">連詞 (47 條)</option>
+            <option value="代詞">代詞 (43 條)</option>
+            <option value="方位詞">方位詞 (38 條)</option>
+            <option value="疑問詞">疑問詞 (22 條)</option>
+            <option value="數詞">數詞 (21 條)</option>
+            <option value="擬聲詞">擬聲詞 (19 條)</option>
+            <option value="助詞">助詞 (16 條)</option>
+            <option value="嘆詞">嘆詞 (12 條)</option>
+          </select>
+        </div>
+
+        <!-- 關鍵字搜尋框 -->
+        <div class="flex-1 min-w-[200px] relative">
+          <input type="text" id="dict-search-keyword" placeholder="搜尋漢字、台羅拼音或中文釋義..." 
+                 onkeydown="if(event.key==='Enter') loadDictionaryWords(0)"
+                 class="w-full pl-8 pr-3 py-1 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-taigi-500">
+          <i class="fa-solid fa-magnifying-glass text-slate-400 absolute left-2.5 top-2 text-xs"></i>
+        </div>
+
+        <button onclick="loadDictionaryWords(0)" class="px-3 py-1 bg-taigi-600 hover:bg-taigi-500 text-white text-xs font-medium rounded-lg transition shadow-sm">
+          查詢
+        </button>
+      </div>
+
+      <!-- 辭典結果卡片 Grid -->
+      <div id="dict-results-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- 動態載入詞條 -->
+      </div>
+
+      <!-- 分頁列 -->
+      <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 text-xs text-slate-500">
+        <div>
+          共 <span id="dict-total-count" class="font-bold text-slate-800">0</span> 筆詞目，目前顯示第 <span id="dict-current-page" class="font-bold text-slate-800">1</span> 頁
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="prevDictPage()" id="dict-btn-prev" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium disabled:opacity-40 transition">
+            <i class="fa-solid fa-chevron-left mr-1"></i>上一頁
+          </button>
+          <button onclick="nextDictPage()" id="dict-btn-next" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium disabled:opacity-40 transition">
+            下一頁<i class="fa-solid fa-chevron-right ml-1"></i>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 4: 13 大通押韻部指南 (Rhyme Guide) -->
+    <!-- ========================================== -->
+    <div id="tab-guide" class="tab-content hidden space-y-6">
+
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <h2 class="text-xl font-bold font-serif text-slate-900 mb-2">台灣話十三大通押部體系解析</h2>
+        <p class="text-sm text-slate-600 leading-relaxed">
+          台語傳統歌謠（如褒歌、七字仔、歌仔戲）與現代台語流行歌曲在押韻時，具備獨特的音韻學特色：
+          <br>1. <b>介音通押</b>：主要元音相同即可通押，不論前置介音（-i- 或 -u-），如 <code>a, ia, ua</code> 屬同一部。
+          <br>2. <b>口鼻通押</b>：口音與鼻化韻通押，如 <code>a</code> 與 <code>ann</code> 互押。
+          <br>3. <b>喉塞音歸入開尾</b>：喉塞音 <code>-h</code> 入聲韻短促，常與開尾韻互押。
+          <br>4. <b>陽聲韻同尾通押</b>：雙唇鼻音 (-m)、齒齦鼻音 (-n)、軟腭鼻音 (-ng) 依元音性質歸納為三大陽聲部。
+        </p>
+      </div>
+
+      <!-- 13 部卡片 Grid -->
+      <div id="rhyme-groups-guide-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- 動態渲染 13 部卡片 -->
+      </div>
+
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 5: 歌仔冊參考寶庫 (Kua-á-tsheh Library) -->
+    <!-- ========================================== -->
+    <div id="tab-corpus" class="tab-content hidden space-y-6">
+
+      <!-- 頁首與動作列 -->
+      <div class="bg-gradient-to-r from-taigi-900 via-slate-900 to-taigi-950 p-6 rounded-2xl text-white shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-xs font-semibold border border-amber-400/40">
+              <i class="fa-solid fa-scroll mr-1"></i>傳統歌仔冊文庫
+            </span>
+            <span class="text-xs text-slate-300" id="kua-stats-header">共收錄 0 篇七字仔四句聯</span>
+          </div>
+          <h2 class="text-2xl font-serif font-bold mt-2">歌仔冊主題文庫與寫作借鑑</h2>
+          <p class="text-xs text-slate-300 mt-1">匯入與典藏同主題歌仔冊、七字仔、相褒歌，寫歌時可隨時對照古人起承轉合、借韻與文意對偶。</p>
+        </div>
+
+        <button onclick="openKuaImportModal()" class="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-xl font-bold text-sm shadow-md transition flex items-center gap-2 flex-shrink-0">
+          <i class="fa-solid fa-cloud-arrow-up text-base"></i>
+          <span>匯入歌仔冊文章</span>
+        </button>
+      </div>
+
+      <!-- 主題標籤與多維度篩選列 -->
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <!-- 主題分類標籤列 -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs font-medium text-slate-500"><i class="fa-solid fa-tags text-taigi-600 mr-1"></i>主題分類：</span>
+          <div id="kua-theme-tags" class="flex flex-wrap gap-1.5">
+            <!-- 動態生成主題按鈕 -->
+          </div>
+        </div>
+
+        <!-- 複合檢索工具列 -->
+        <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-3">
+          <!-- 押韻部篩選 -->
+          <div class="flex items-center gap-1.5 text-xs text-slate-600">
+            <span>含韻部：</span>
+            <select id="kua-filter-rhyme" onchange="loadKuaDocList(0)" class="bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-xs focus:ring-1 focus:ring-taigi-500">
+              <option value="">全部韻部</option>
+            </select>
+          </div>
+
+          <!-- 關鍵字搜尋框 -->
+          <div class="flex-1 min-w-[200px] relative">
+            <input type="text" id="kua-search-keyword" placeholder="搜尋歌仔冊篇名、內文詞句或作者..." 
+                   onkeydown="if(event.key==='Enter') loadKuaDocList(0)"
+                   class="w-full pl-8 pr-3 py-1 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-taigi-500">
+            <i class="fa-solid fa-magnifying-glass text-slate-400 absolute left-2.5 top-2 text-xs"></i>
+          </div>
+
+          <button onclick="loadKuaDocList(0)" class="px-3 py-1 bg-taigi-600 hover:bg-taigi-500 text-white text-xs font-medium rounded-lg transition shadow-sm">
+            篩選
+          </button>
+        </div>
+      </div>
+
+      <!-- 歌仔冊雙欄展示：左篇目清單、右段落音律閱讀器 -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- 左欄：歌仔冊文章清單 (4/12) -->
+        <div class="lg:col-span-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[720px]">
+          <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+            <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+              <i class="fa-solid fa-book-open text-taigi-600"></i> 文章列表
+            </h3>
+            <span class="text-xs text-slate-400" id="kua-list-count">共 0 篇</span>
+          </div>
+
+          <div id="kua-docs-list-container" class="flex-1 overflow-y-auto space-y-2.5 mt-3 pr-1">
+            <!-- 動態載入歌仔冊卡片 -->
+          </div>
+        </div>
+
+        <!-- 右欄：文章四句聯音律排版閱讀器 (8/12) -->
+        <div class="lg:col-span-8 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[720px]">
+          <div id="kua-detail-header" class="pb-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <span id="kua-detail-theme" class="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-100 text-amber-900 border border-amber-300">主題</span>
+                <span id="kua-detail-author" class="text-xs text-slate-500">作者出處</span>
+              </div>
+              <h3 id="kua-detail-title" class="text-xl font-bold font-serif text-slate-900 mt-1">請在左側點選一篇歌仔冊</h3>
+              <p id="kua-detail-desc" class="text-xs text-slate-500 mt-0.5 line-clamp-2">背景說明</p>
+            </div>
+
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <button onclick="copyFullKuaContent()" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-medium transition flex items-center gap-1.5">
+                <i class="fa-regular fa-copy"></i> 複製全文
+              </button>
+              <button onclick="deleteCurrentKuaDoc()" id="btn-delete-kua" class="px-3 py-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-600 text-xs font-medium transition flex items-center gap-1.5">
+                <i class="fa-regular fa-trash-can"></i> 刪除此篇
+              </button>
+            </div>
+          </div>
+
+          <!-- 四句聯段落清單滾動區 -->
+          <div id="kua-stanzas-container" class="flex-1 overflow-y-auto space-y-4 mt-4 pr-2">
+            <div class="h-full flex flex-col items-center justify-center text-slate-300 py-16">
+              <i class="fa-solid fa-scroll text-5xl mb-3 text-slate-200"></i>
+              <p class="text-sm">點選左側篇章，即刻顯示對偶四句聯、尾字韻腳與聲調分析</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Gemini API Key 設定彈窗 (Modal) -->
+  <div id="api-key-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+        <h3 class="font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-key text-amber-500"></i> 設定 Google Gemini API Key
+        </h3>
+        <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-slate-600">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      
+      <div class="py-4 space-y-4 text-xs text-slate-600 leading-relaxed">
+        <!-- 後端狀態偵測徽章 -->
+        <div id="env-status-badge" class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+          <span class="text-slate-500">伺服器端環境偵測：</span>
+          <span id="env-status-text" class="font-medium text-slate-600">檢測中...</span>
+        </div>
+
+        <div>
+          <label class="block text-slate-700 font-bold mb-1.5 flex justify-between items-center">
+            <span>方式一：直接在網頁設定（最簡單）</span>
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-taigi-600 hover:underline font-normal text-[11px] flex items-center gap-1">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i> 免費領取 API Key
+            </a>
+          </label>
+          <div class="flex gap-2">
+            <input type="password" id="input-gemini-key" placeholder="貼上 AIzaSy 開頭的 Gemini API Key..." 
+                   class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-taigi-500 text-xs font-mono">
+            <button onclick="testApiKeyConnection()" id="btn-test-key" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition flex items-center gap-1 flex-shrink-0">
+              <i class="fa-solid fa-vial"></i> 測試連線
+            </button>
+          </div>
+          <div id="key-test-feedback" class="mt-2 text-[11px] hidden p-2 rounded-lg"></div>
+        </div>
+
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+          <div class="font-bold text-slate-700">方式二：透過專案 <code>.env</code> 檔案設定（長期使用推薦）</div>
+          <p class="text-slate-500">在專案資料夾內建立或編輯 <code>.env</code> 檔案，加入：</p>
+          <pre class="bg-slate-900 text-emerald-400 p-2 rounded text-[11px] font-mono select-all">GEMINI_API_KEY=你的Gemini_API_Key</pre>
+          <p class="text-[11px] text-slate-400">※ 存入 .env 後，伺服器每次啟動皆會自動讀取，免去重複貼上的麻煩。</p>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 flex justify-between items-center">
+        <button onclick="clearSavedApiKey()" class="text-xs text-rose-500 hover:text-rose-700 transition">
+          <i class="fa-regular fa-trash-can mr-1"></i>清除網頁儲存的 Key
+        </button>
+        <div class="flex gap-2">
+          <button onclick="closeApiKeyModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition">關閉</button>
+          <button onclick="saveApiKey()" class="px-4 py-2 bg-taigi-600 hover:bg-taigi-500 text-white rounded-lg text-xs font-medium transition shadow-sm">儲存網頁設定</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 歌仔冊文章匯入彈窗 (Modal) -->
+  <div id="kua-import-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-100 flex-shrink-0">
+        <h3 class="font-bold text-slate-900 flex items-center gap-2 text-base">
+          <i class="fa-solid fa-file-arrow-up text-amber-500"></i> 匯入歌仔冊／七字仔文章
+        </h3>
+        <button onclick="closeKuaImportModal()" class="text-slate-400 hover:text-slate-600 transition">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="py-4 space-y-3.5 text-xs text-slate-700 overflow-y-auto flex-1 pr-1">
+        <div class="p-3 bg-amber-50/70 rounded-xl border border-amber-200 text-amber-900 leading-relaxed">
+          <div class="font-bold flex items-center gap-1.5 mb-1">
+            <i class="fa-solid fa-lightbulb text-amber-600"></i> 智慧音律解析與分段入庫
+          </div>
+          系統將自動過濾空白行與段落標記，將內文以「四句為一葩」進行切分，並自動為每句句尾字標注台羅拼音、13 大通押部與聲調（依周定邦老師 1、5 最優與 4 8 4 8 入聲格律）。匯入後即可在寫歌時進行同主題與同韻借鑑！
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-700 font-bold mb-1">文章標題 <span class="text-rose-500">*</span></label>
+            <input type="text" id="kua-import-title" placeholder="如：《雪梅思君》、《周成過台灣》" 
+                   class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-taigi-500 text-xs font-serif font-medium">
+          </div>
+          <div>
+            <label class="block text-slate-700 font-bold mb-1">主題分類</label>
+            <input type="text" id="kua-import-theme" list="kua-theme-suggestions" placeholder="如：思念情感、勸世醒世、男女相褒..." 
+                   class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-taigi-500 text-xs">
+            <datalist id="kua-theme-suggestions">
+              <option value="思念情感">
+              <option value="勸世醒世">
+              <option value="男女相褒">
+              <option value="離別悲歡">
+              <option value="人生歲月">
+              <option value="歷史傳奇">
+              <option value="江湖義氣">
+              <option value="夫妻情義">
+              <option value="飲食風俗">
+              <option value="風土民俗">
+            </datalist>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-700 font-bold mb-1">作者／出處／刊印本</label>
+            <input type="text" id="kua-import-author" placeholder="如：民間相褒、清末唱本、周定邦老師" 
+                   class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-taigi-500 text-xs">
+          </div>
+          <div>
+            <label class="block text-slate-700 font-bold mb-1">上傳 .txt 檔案（自動讀入）</label>
+            <input type="file" id="kua-import-file" accept=".txt" onchange="handleKuaFileUpload(event)"
+                   class="w-full px-2 py-1.5 border border-slate-200 rounded-lg bg-slate-50 text-[11px] text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-taigi-600 file:text-white hover:file:bg-taigi-500 cursor-pointer">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-700 font-bold mb-1">背景說明／故事大綱</label>
+          <input type="text" id="kua-import-desc" placeholder="簡短說明此篇歌仔冊之故事梗概、歷史背景或傳唱情境..." 
+                 class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-taigi-500 text-xs">
+        </div>
+
+        <div>
+          <label class="block text-slate-700 font-bold mb-1 flex justify-between items-center">
+            <span>歌仔冊內文（每行一句，每 4 句自動為一葩）<span class="text-rose-500">*</span></span>
+            <span class="text-[11px] text-slate-400 font-normal">支援繁體漢字／台語漢字</span>
+          </label>
+          <textarea id="kua-import-content" rows="8" placeholder="每行一句，例如：
+正月算來是新年，家家戶戶點紅仙。
+思念丈夫無變竅，暗自流淚哭可憐。
+二月算來是春分，百花開透正芬芳。
+..." class="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-taigi-500 text-xs font-serif leading-relaxed"></textarea>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 flex justify-between items-center flex-shrink-0">
+        <span class="text-[11px] text-slate-400" id="kua-import-status-text">點擊匯入後，系統將逐句進行音韻辨識</span>
+        <div class="flex gap-2">
+          <button onclick="closeKuaImportModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition">取消</button>
+          <button onclick="submitKuaImport()" id="btn-submit-kua" class="px-4 py-2 bg-taigi-600 hover:bg-taigi-500 text-white rounded-lg text-xs font-medium transition shadow-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-check"></i> 立即解析並匯入
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- 應用程式核心 JavaScript -->
+  <script>
+    // 預設經典範例歌詞
+    const SAMPLES = {
+      stanza_green: `[周定邦老師格律 - 舒聲 1、5最好綠燈]
+天頂月娘照水池
+相逢春風吹滿枝
+夜靜風吹百花放
+一生相守到佳期`,
+      stanza_stop4848: `[周定邦老師格律 - 入聲 4 8 4 8 專門格律綠燈]
+兄弟結拜心相接
+共同打拼真骨力
+艱苦走過費心血
+難捨難分難分別`,
+      stanza_yellow: `[周定邦老師格律 - 寬容合格 7/8 聲黃燈]
+春風吹過小水池
+思念故鄉心酸味
+抬頭看月照四方
+何日重逢共此時`,
+      stanza_red: `[周定邦老師格律 - 韻跤禁用降調紅燈]
+春風吹來花滿枝
+兩人作伴讀情詩
+抬頭看月照四方
+離別心酸空失意`,
+      stanza_red_rhyme: `[四句聯 - 核心失韻紅燈]
+春天百花開滿枝
+樹頂小鳥伴相隨
+雖然離別心酸苦
+不通放阮孤單坐`,
+      bangkshunhong: `[傳統四句聯 - 望春風]
+獨夜無伴守燈下
+清風對面吹
+十七八歲未出嫁
+看著少年家`,
+      kiahau: `[江蕙 - 家後]
+有一日咱若老
+找無人聽咱講心事
+我就會陪你
+坐佇椅仔頂面
+看天頂的星
+聽你講過去
+阮將一生獻予你
+從青春行到白首`,
+      longtshuhitau: `[茄子蛋 - 浪子回頭]
+菸一支一支點
+酒一杯一杯乾
+請你予我最後一擺
+陪你行到天光
+走揣失去的愛
+這條路永遠行袂煞`,
+      amauêue: `[蕭煌奇 - 阿嬤的話]
+思念的滋味放袂離
+只有月娘知影阮心意
+想起細漢阿嬤牽我行
+溫柔的聲音猶佇耳邊`
+    };
+
+    let rhymeGroupsData = {};
+    let currentAnalysis = null;
+    let selectedLineIndex = 0;
+    let debounceTimer = null;
+    let currentDictOffset = 0;
+    const dictLimit = 36;
+    let selectedRhymeGroupFilter = "";
+    let currentToneFilter = "recommended"; // 預設：只看最佳推薦聲調
+
+    // 歌仔冊文庫狀態變數
+    let currentKuaDocId = null;
+    let selectedKuaTheme = "";
+    let currentKuaOffset = 0;
+    const kuaLimit = 40;
+    let currentKuaDocData = null;
+    let kuaThemesLoaded = false;
+
+    // 初始化頁面
+    window.addEventListener('DOMContentLoaded', async () => {
+      // 讀取本機 API Key
+      const savedKey = localStorage.getItem('taigi_gemini_api_key');
+      if (savedKey) {
+        document.getElementById('input-gemini-key').value = savedKey;
+      }
+
+      // 檢查後端環境設定
+      checkConfigStatus();
+
+      // 載入 13 大通押部設定
+      await loadRhymeGroups();
+
+      // 讀取暫存歌詞或載入預設範例
+      const cachedLyrics = localStorage.getItem('taigi_draft_lyrics');
+      if (cachedLyrics && cachedLyrics.trim()) {
+        document.getElementById('lyrics-input').value = cachedLyrics;
+      } else {
+        loadSampleLyrics('amauêue');
+      }
+
+      // 執行首次歌詞分析
+      onLyricsChange();
+      
+      // 預載辭典詞彙
+      loadDictionaryWords(0);
+
+      // 預載歌仔冊主題與第一頁清單
+      loadKuaThemes();
+      loadKuaDocList(0);
+    });
+
+    // 頁籤切換
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(el => {
+        el.classList.remove('border-taigi-400', 'text-taigi-300');
+        el.classList.add('border-transparent', 'text-slate-400');
+      });
+
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+      const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+      activeBtn.classList.remove('border-transparent', 'text-slate-400');
+      activeBtn.classList.add('border-taigi-400', 'text-taigi-300');
+
+      if (tabId === 'dictionary' && Object.keys(rhymeGroupsData).length > 0) {
+        renderDictRhymeTags();
+      }
+
+      if (tabId === 'corpus') {
+        if (!kuaThemesLoaded) {
+          loadKuaThemes();
+        }
+        loadKuaDocList(0);
+      }
+    }
+
+    // 載入 13 大通押韻部
+    async function loadRhymeGroups() {
+      try {
+        const res = await fetch('/api/rhyme_groups');
+        rhymeGroupsData = await res.json();
+        
+        // 渲染助手頁的目標韻部下拉選單
+        const select = document.getElementById('assistant-target-rhyme');
+        select.innerHTML = '';
+        for (const [gid, info] of Object.entries(rhymeGroupsData)) {
+          const opt = document.createElement('option');
+          opt.value = gid;
+          opt.textContent = `${gid} - ${info.description}`;
+          select.appendChild(opt);
+        }
+
+        // 渲染歌仔冊文庫的韻部篩選下拉選單
+        const kuaRhymeSelect = document.getElementById('kua-filter-rhyme');
+        if (kuaRhymeSelect) {
+          kuaRhymeSelect.innerHTML = '<option value="">全部韻部</option>';
+          for (const [gid, info] of Object.entries(rhymeGroupsData)) {
+            const opt = document.createElement('option');
+            opt.value = gid;
+            opt.textContent = `${gid} (${info.variants.slice(0, 3).join(',')}...)`;
+            kuaRhymeSelect.appendChild(opt);
+          }
+        }
+
+        renderGuideGrid();
+        renderDictRhymeTags();
+      } catch (err) {
+        console.error('載入韻部資料失敗:', err);
+      }
+    }
+
+    // 載入範例歌詞
+    function loadSampleLyrics(key) {
+      if (SAMPLES[key]) {
+        document.getElementById('lyrics-input').value = SAMPLES[key];
+        onLyricsChange();
+      }
+    }
+
+    function clearLyrics() {
+      if (confirm('確定要清空歌詞編輯器內容嗎？')) {
+        document.getElementById('lyrics-input').value = '';
+        onLyricsChange();
+      }
+    }
+
+    // 歌詞變更監聽 (Debounce 300ms)
+    function onLyricsChange() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        const text = document.getElementById('lyrics-input').value;
+        localStorage.setItem('taigi_draft_lyrics', text);
+        runLyricsAnalysis(text);
+      }, 300);
+    }
+
+    // 呼叫後端執行歌詞分析
+    async function runLyricsAnalysis(lyricsText) {
+      try {
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lyrics: lyricsText })
+        });
+        currentAnalysis = await res.json();
+        renderAnalysisStats(currentAnalysis);
+        renderStanzaTrafficLights(currentAnalysis.stanzas);
+        renderLinesAnalysis(currentAnalysis.lines);
+      } catch (err) {
+        console.error('分析歌詞失敗:', err);
+      }
+    }
+
+    // 渲染四句聯三級機制評審看板 (綠燈 / 黃燈 / 紅燈)
+    function renderStanzaTrafficLights(stanzas) {
+      const container = document.getElementById('stanza-traffic-lights-container');
+      if (!container) return;
+      container.innerHTML = '';
+      if (!stanzas || stanzas.length === 0) return;
+
+      stanzas.forEach(s => {
+        if (s.traffic_light === 'neutral') return;
+
+        const card = document.createElement('div');
+        let bgBorder = 'border-slate-200 bg-slate-50';
+        let lightIcon = '⚪';
+        let badgeColor = 'bg-slate-100 text-slate-700';
+
+        if (s.traffic_light === 'green') {
+          bgBorder = 'border-emerald-300 bg-emerald-50/70 shadow-sm';
+          lightIcon = '🟢';
+          badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+        } else if (s.traffic_light === 'yellow') {
+          bgBorder = 'border-amber-300 bg-amber-50/70 shadow-sm';
+          lightIcon = '🟡';
+          badgeColor = 'bg-amber-100 text-amber-800 border-amber-300';
+        } else if (s.traffic_light === 'red') {
+          bgBorder = 'border-rose-300 bg-rose-50/80 shadow-sm';
+          lightIcon = '🔴';
+          badgeColor = 'bg-rose-100 text-rose-800 border-rose-300';
+        }
+
+        let messagesHtml = '';
+        if (s.messages && s.messages.length > 0) {
+          messagesHtml = `<ul class="mt-2 space-y-1 text-xs">` + 
+            s.messages.map(m => `<li class="flex items-start gap-1.5"><span class="text-slate-400 mt-0.5">•</span><span>${m}</span></li>`).join('') +
+            `</ul>`;
+        }
+
+        // 若為紅燈且有失韻第4句，提供立即換句快捷鍵
+        let actionBtn = '';
+        if (s.traffic_light === 'red' && s.line_indices && s.line_indices.length >= 4) {
+          const l4_no = s.line_indices[3];
+          const l4_idx = currentAnalysis.lines.findIndex(l => l.line_no === l4_no);
+          if (l4_idx !== -1) {
+            actionBtn = `
+              <div class="mt-2.5 pt-2 border-t border-rose-200/60 flex justify-end">
+                <button onclick="selectLineForAssistant(${l4_idx})" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-medium transition shadow-sm flex items-center gap-1.5">
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> 立即用 AI 改寫第 4 句換同韻
+                </button>
+              </div>
+            `;
+          }
+        }
+
+        card.className = `p-3.5 rounded-xl border ${bgBorder} transition text-slate-800`;
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 font-bold text-sm">
+              <span class="text-base">${lightIcon}</span>
+              <span>第 ${s.stanza_idx} 段四句聯評審：${s.title}</span>
+            </div>
+            <span class="text-[11px] px-2 py-0.5 rounded-full border font-medium ${badgeColor}">
+              ${s.traffic_light === 'green' ? '嚴格合律' : (s.traffic_light === 'yellow' ? '民間借韻/寬容' : '失韻需修正')}
+            </span>
+          </div>
+          <div class="text-xs text-slate-600 mt-1 leading-relaxed">
+            ${s.summary}
+          </div>
+          ${messagesHtml}
+          ${actionBtn}
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // 渲染統計面板
+    function renderAnalysisStats(data) {
+      document.getElementById('stat-rhyme-rate').textContent = `${data.rhyme_rate}%`;
+      document.getElementById('stat-rhyme-count').textContent = `${data.rhyme_lines_count} / ${data.valid_lines_count} 行押韻`;
+      
+      const primGrp = data.primary_group || '未檢測';
+      document.getElementById('stat-primary-group').textContent = primGrp;
+      document.getElementById('stat-primary-desc').textContent = data.primary_desc || '';
+
+      const warnings = data.lines.filter(l => l.is_valid && l.rhyme_status === '出韻').length;
+      document.getElementById('stat-warning-count').textContent = `${warnings} 行`;
+
+      document.getElementById('stat-lines-count').textContent = `${data.valid_lines_count} / ${data.total_lines}`;
+    }
+
+    // 渲染逐行檢測報告
+    function renderLinesAnalysis(lines) {
+      const container = document.getElementById('lines-analysis-container');
+      container.innerHTML = '';
+
+      if (!lines || lines.length === 0) {
+        container.innerHTML = `<div class="text-center text-slate-400 py-12 text-sm">無內容</div>`;
+        return;
+      }
+
+      lines.forEach((l, idx) => {
+        if (!l.is_valid && !l.is_section_header) {
+          return;
+        }
+
+        const card = document.createElement('div');
+        if (l.is_section_header) {
+          card.className = "py-1.5 px-3 bg-slate-100 rounded-lg text-slate-500 font-bold text-xs flex items-center gap-2";
+          card.innerHTML = `<i class="fa-solid fa-bookmark text-taigi-600"></i> ${l.text}`;
+          container.appendChild(card);
+          return;
+        }
+
+        // 押韻狀態樣式
+        let statusBadge = '';
+        let borderClass = 'border-slate-200';
+        if (l.rhyme_status === '押主韻') {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-100 text-emerald-800 border border-emerald-300">押主韻</span>`;
+          borderClass = 'border-emerald-200 bg-emerald-50/20';
+        } else if (l.rhyme_status === '偶句通押') {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-medium bg-sky-100 text-sky-800 border border-sky-300">偶句通押</span>`;
+          borderClass = 'border-sky-200 bg-sky-50/20';
+        } else {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-100 text-rose-800 border border-rose-300">出韻</span>`;
+          borderClass = 'border-rose-200 bg-rose-50/30';
+        }
+
+        const rhymeGroupClass = `badge-${l.rhyme_group || 'none'}`;
+
+        // 四句聯角色與聲調評定標籤
+        let roleBadge = '';
+        if (l.role_index === 1) {
+          roleBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 text-slate-700 font-medium">起句 (自由發揮)</span>`;
+        } else if (l.role_index === 2) {
+          roleBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] bg-amber-100 text-amber-900 border border-amber-300 font-bold">承句 (韻跤🌟)</span>`;
+        } else if (l.role_index === 3) {
+          roleBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 text-slate-700 font-medium">轉句 (自由發揮)</span>`;
+        } else if (l.role_index === 4) {
+          roleBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] bg-amber-100 text-amber-900 border border-amber-300 font-bold">合句 (韻跤🌟)</span>`;
+        }
+
+        // 聲調合律標籤 (周定邦老師格律)
+        let toneBadge = '';
+        if (l.tone) {
+          if (l.tone_grade === 'optimal') {
+            toneBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold" title="${l.tone_feedback}">🌟 ${l.tone}調 (最優合律)</span>`;
+          } else if (l.tone_grade === 'acceptable') {
+            toneBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300 font-medium" title="${l.tone_feedback}">合律 ${l.tone}調</span>`;
+          } else if (l.tone_grade === 'warning') {
+            toneBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300 font-medium" title="${l.tone_feedback}">⚠️ ${l.tone}調</span>`;
+          } else if (l.tone_grade === 'danger') {
+            toneBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-300 font-bold" title="${l.tone_feedback}">❌ ${l.tone}調 (降調禁用)</span>`;
+          } else {
+            toneBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium" title="${l.tone_feedback || ''}">${l.tone}調 (自由)</span>`;
+          }
+        }
+
+        card.className = `p-3 rounded-xl border ${borderClass} bg-white shadow-sm flex items-center justify-between gap-3 hover:border-taigi-400 transition cursor-pointer`;
+        card.onclick = () => selectLineForAssistant(idx);
+
+        card.innerHTML = `
+          <div class="flex items-center gap-3 flex-1 min-w-0">
+            <div class="flex flex-col items-center flex-shrink-0">
+              <span class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-xs font-mono font-medium">
+                ${l.line_no}
+              </span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <span class="font-serif text-base text-slate-900 truncate">${l.text}</span>
+                ${roleBadge}
+              </div>
+              <div class="text-xs text-slate-500 flex items-center flex-wrap gap-2 mt-1">
+                <span>尾字: <b>${l.end_char}</b></span>
+                <span class="font-mono text-slate-400">(${l.end_tailo})</span>
+                ${toneBadge}
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <span class="px-2 py-0.5 rounded text-xs border font-medium ${rhymeGroupClass}">
+              ${l.rhyme_group || '未識別'}
+            </span>
+            ${statusBadge}
+            <button onclick="event.stopPropagation(); selectLineForAssistant(${idx})" class="p-1.5 text-xs rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 transition" title="以此句進行 AI 改字換句">
+              <i class="fa-solid fa-wand-magic-sparkles"></i>
+            </button>
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+    }
+
+    // 選取某一行進入 AI 助手
+    function selectLineForAssistant(lineIdx) {
+      if (!currentAnalysis || !currentAnalysis.lines[lineIdx]) return;
+      selectedLineIndex = lineIdx;
+      const curLine = currentAnalysis.lines[lineIdx];
+
+      // 切換至助手分頁
+      switchTab('assistant');
+
+      document.getElementById('focus-line-num').textContent = curLine.line_no;
+      document.getElementById('focus-line-text').textContent = curLine.text;
+
+      // 設置四句聯角色標籤
+      const roleBadge = document.getElementById('focus-role-badge');
+      const rIdx = curLine.role_index || 2;
+      let rName = '四句聯：第 2 句 承句（韻跤🌟 1、5最好）';
+      if (rIdx === 1) rName = '四句聯：第 1 句 起句（首句・自由發揮）';
+      else if (rIdx === 3) rName = '四句聯：第 3 句 轉句（轉折・自由發揮）';
+      else if (rIdx === 4) rName = '四句聯：第 4 句 合句（韻跤🌟 1、5最好）';
+      if (roleBadge) roleBadge.textContent = rName;
+
+      // 更新角色聲調指引橫幅與動態單調按鈕
+      updateToneGuideBanner(rIdx);
+
+      // 重設為推薦聲調篩選
+      currentToneFilter = "recommended";
+      updateToneFilterButtonStyles();
+
+      // 找尋上一有效行與下一有效行
+      let prevText = '（無）';
+      for (let p = lineIdx - 1; p >= 0; p--) {
+        if (currentAnalysis.lines[p].is_valid) {
+          prevText = currentAnalysis.lines[p].text;
+          break;
+        }
+      }
+      let nextText = '（無）';
+      for (let n = lineIdx + 1; n < currentAnalysis.lines.length; n++) {
+        if (currentAnalysis.lines[n].is_valid) {
+          nextText = currentAnalysis.lines[n].text;
+          break;
+        }
+      }
+
+      document.getElementById('focus-prev-text').textContent = prevText;
+      document.getElementById('focus-next-text').textContent = nextText;
+
+      // 目標韻部：預設帶入歌詞主韻，若自身就是主韻則維持自身
+      const targetGroup = currentAnalysis.primary_group || curLine.rhyme_group || 'OPEN_A';
+      document.getElementById('assistant-target-rhyme').value = targetGroup;
+
+      // 發送後端請求取得換字與換句建議
+      fetchSentenceSuggestions();
+    }
+
+    // 更新角色聲調指引橫幅與動態按鈕 (周定邦老師格律)
+    function updateToneGuideBanner(roleIndex) {
+      const titleEl = document.getElementById('tone-guide-title');
+      const tipEl = document.getElementById('tone-guide-tip');
+      const dynamicFilters = document.getElementById('dynamic-tone-filters');
+      const targetRhyme = document.getElementById('assistant-target-rhyme') ? document.getElementById('assistant-target-rhyme').value : '';
+      const isStopRhyme = (targetRhyme || '').startsWith('STOP_');
+
+      if (roleIndex === 2 || roleIndex === 4) {
+        if (isStopRhyme) {
+          if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-lightbulb text-amber-500"></i> 周定邦老師入聲格律（第 ${roleIndex} 句韻跤）：必須為第 8 聲（陽入）`;
+          if (tipEl) tipEl.textContent = `入聲四句聯嚴格遵守「4 8 4 8」格律，第 2、4 句尾字必須為第 8 聲（陽入）。已自動將第 8 聲置頂！`;
+        } else {
+          if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-lightbulb text-amber-500"></i> 周定邦老師格律（第 ${roleIndex} 句韻跤）：降的不用，1、5 最好！`;
+          if (tipEl) tipEl.textContent = `❌ 嚴禁第 2、3、4 聲降調/促音（唱腔易下墜）。✅ 最優為第 1、5 聲（圓順好唱），⚠️ 第 7、8 聲為寬容合格。系統已自動剔除降調並將 1、5 聲加權置頂！`;
+        }
+        if (dynamicFilters) {
+          dynamicFilters.innerHTML = `
+            <button onclick="setToneFilter('1')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium tone-btn" data-tone="1">1聲</button>
+            <button onclick="setToneFilter('5')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium tone-btn" data-tone="5">5聲</button>
+            <button onclick="setToneFilter('7')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium tone-btn" data-tone="7">7聲</button>
+            <button onclick="setToneFilter('8')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium tone-btn" data-tone="8">8聲</button>
+          `;
+        }
+      } else {
+        if (isStopRhyme) {
+          if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-lightbulb text-indigo-500"></i> 周定邦老師入聲格律（第 ${roleIndex} 句）：必須為第 4 聲（陰入）`;
+          if (tipEl) tipEl.textContent = `入聲四句聯嚴格遵守「4 8 4 8」格律，第 1、3 句尾字必須為第 4 聲（陰入）。`;
+        } else {
+          if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-lightbulb text-slate-500"></i> 周定邦老師格律（第 ${roleIndex} 句）：自由發揮，不設硬性限制`;
+          if (tipEl) tipEl.textContent = `第 1 句（起句）與第 3 句（轉句）尾字完全自由發揮，不限制聲調與平仄。若有入韻視為錦上添花！`;
+        }
+        if (dynamicFilters) {
+          dynamicFilters.innerHTML = `
+            <button onclick="setToneFilter('1')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium tone-btn" data-tone="1">1聲</button>
+            <button onclick="setToneFilter('2')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium tone-btn" data-tone="2">2聲</button>
+            <button onclick="setToneFilter('3')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium tone-btn" data-tone="3">3聲</button>
+            <button onclick="setToneFilter('4')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium tone-btn" data-tone="4">4聲</button>
+            <button onclick="setToneFilter('5')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium tone-btn" data-tone="5">5聲</button>
+            <button onclick="setToneFilter('7')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium tone-btn" data-tone="7">7聲</button>
+            <button onclick="setToneFilter('8')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium tone-btn" data-tone="8">8聲</button>
+          `;
+        }
+      }
+    }
+
+    // 設定聲調篩選條件
+    function setToneFilter(filterVal) {
+      currentToneFilter = filterVal;
+      updateToneFilterButtonStyles();
+      fetchSentenceSuggestions();
+    }
+
+    // 更新篩選按鈕高亮樣式
+    function updateToneFilterButtonStyles() {
+      const recBtn = document.getElementById('tone-filter-btn-recommended');
+      const optBtn = document.getElementById('tone-filter-btn-optimal');
+      const accBtn = document.getElementById('tone-filter-btn-acceptable');
+      const allBtn = document.getElementById('tone-filter-btn-all');
+      
+      const activeCls = "px-2.5 py-1 rounded-lg font-medium transition bg-taigi-600 text-white shadow-sm flex items-center gap-1";
+      const inactiveCls = "px-2.5 py-1 rounded-lg font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1";
+
+      if (recBtn) recBtn.className = (currentToneFilter === 'recommended') ? activeCls : inactiveCls;
+      if (optBtn) optBtn.className = (currentToneFilter === 'optimal_1_5') ? activeCls : inactiveCls;
+      if (accBtn) accBtn.className = (currentToneFilter === 'acceptable_7_8') ? activeCls : inactiveCls;
+      if (allBtn) allBtn.className = (currentToneFilter === 'all') ? "px-2.5 py-1 rounded-lg font-medium transition bg-taigi-600 text-white shadow-sm" : "px-2.5 py-1 rounded-lg font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-700";
+
+      document.querySelectorAll('.tone-btn').forEach(btn => {
+        if (btn.dataset.tone === currentToneFilter) {
+          btn.className = "px-2 py-0.5 rounded bg-taigi-600 text-white font-medium tone-btn shadow-xs";
+        } else {
+          btn.className = "px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium tone-btn";
+        }
+      });
+    }
+
+    function onTargetRhymeChanged() {
+      fetchSentenceSuggestions();
+    }
+
+    // 向後端請求智慧換詞換句建議
+    async function fetchSentenceSuggestions() {
+      if (!currentAnalysis || !currentAnalysis.lines[selectedLineIndex]) return;
+      const curLine = currentAnalysis.lines[selectedLineIndex];
+      const targetGroup = document.getElementById('assistant-target-rhyme').value;
+      const prevText = document.getElementById('focus-prev-text').textContent;
+      const nextText = document.getElementById('focus-next-text').textContent;
+      const rIdx = curLine.role_index || 2;
+
+      const guideText = (rIdx === 2 || rIdx === 4) ? '周定邦老師格律：1、5最好（嚴禁降調）' : '周定邦老師格律：自由發揮（情境契合）';
+      document.getElementById('word-suggestions-list').innerHTML = `
+        <div class="text-center text-slate-400 py-12"><i class="fa-solid fa-spinner fa-spin mr-2"></i>AI 正在依【${guideText}】檢索契合文意之押韻詞庫...</div>
+      `;
+
+      try {
+        const res = await fetch('/api/suggest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            current_line: curLine.text,
+            target_rhyme_group: targetGroup,
+            prev_line: prevText === '（無）' ? '' : prevText,
+            next_line: nextText === '（無）' ? '' : nextText,
+            role_index: rIdx,
+            tone_filter: currentToneFilter
+          })
+        });
+        const data = await res.json();
+        renderSuggestions(data);
+      } catch (err) {
+        console.error('取得建議失敗:', err);
+      }
+    }
+
+    // 渲染 AI 換詞換句面板
+    function renderSuggestions(data) {
+      // 1. 尾字換詞清單
+      const wordList = document.getElementById('word-suggestions-list');
+      wordList.innerHTML = '';
+      const replacements = data.word_replacements || [];
+      document.getElementById('word-cand-count').textContent = `${replacements.length} 個建議`;
+
+      if (replacements.length === 0) {
+        wordList.innerHTML = `<div class="text-center text-slate-400 py-8 text-sm">此聲調篩選下暫無相容之情境詞，可切換「全部聲調」檢視</div>`;
+      } else {
+        replacements.forEach(item => {
+          const div = document.createElement('div');
+          div.className = "p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:border-taigi-500 shadow-sm transition space-y-2";
+          
+          // 聲調合律徽章樣式 (周定邦老師格律)
+          let badgeHtml = '';
+          if (item.tone_badge_text) {
+            let bColor = 'bg-slate-100 text-slate-700 border-slate-200';
+            if (item.tone_badge_type === 'optimal') {
+              bColor = 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold';
+            } else if (item.tone_badge_type === 'acceptable') {
+              bColor = 'bg-teal-50 text-teal-800 border-teal-300 font-medium';
+            } else if (item.tone_badge_type === 'warning') {
+              bColor = 'bg-amber-100 text-amber-800 border-amber-300 font-medium';
+            } else if (item.tone_badge_type === 'danger') {
+              bColor = 'bg-rose-100 text-rose-800 border-rose-300 font-medium';
+            } else if (item.tone_badge_type === 'stop') {
+              bColor = 'bg-purple-100 text-purple-800 border-purple-300 font-medium';
+            }
+            badgeHtml = `<span class="text-[11px] px-2 py-0.5 rounded-full border ${bColor} shadow-xs">${item.tone_badge_text}</span>`;
+          }
+
+          div.innerHTML = `
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-lg font-serif font-bold text-slate-900">${item.replaced_word}</span>
+                <span class="text-xs font-mono text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">${item.tailo}</span>
+                ${item.pos ? `<span class="text-[11px] text-taigi-700 bg-taigi-50 px-1.5 py-0.5 rounded border border-taigi-200">${item.pos}</span>` : ''}
+                ${badgeHtml}
+              </div>
+              <button onclick="applySuggestedLine('${escapeQuote(item.suggested_line)}')" class="px-2.5 py-1 bg-taigi-600 hover:bg-taigi-500 text-white text-xs font-medium rounded-lg transition shadow-sm flex items-center gap-1">
+                <i class="fa-solid fa-check"></i> 套用改寫
+              </button>
+            </div>
+            
+            <div class="text-xs text-slate-700 bg-white p-2 rounded-lg border border-slate-200">
+              <span class="text-slate-400">整句改寫預覽：</span>
+              <span class="font-serif font-semibold text-slate-900">${item.suggested_line}</span>
+            </div>
+
+            <div class="text-[11px] text-slate-500 leading-normal line-clamp-2">
+              <i class="fa-solid fa-book-open text-slate-400 mr-1"></i>${item.definition || '常用台語詞目'}
+            </div>
+          `;
+          wordList.appendChild(div);
+        });
+      }
+
+      // 2. 前後句互換（改上一句）
+      const prevList = document.getElementById('prev-line-alternatives-list');
+      prevList.innerHTML = '';
+      const prevAlts = data.prev_line_alternatives || [];
+      if (prevAlts.length === 0) {
+        prevList.innerHTML = `<div class="text-center text-slate-400 py-4 text-xs">無上一句或無需互換</div>`;
+      } else {
+        prevAlts.forEach(alt => {
+          const div = document.createElement('div');
+          div.className = "p-2.5 rounded-xl border border-blue-100 bg-blue-50/40 text-xs space-y-1.5";
+          div.innerHTML = `
+            <div class="flex justify-between items-center">
+              <span class="font-medium text-blue-900">${alt.direction}</span>
+              <button onclick="applyPrevLineSwap('${escapeQuote(alt.suggested_prev)}')" class="px-2 py-0.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-[11px] font-medium transition">
+                套用上句改寫
+              </button>
+            </div>
+            <div class="font-serif text-slate-800">
+              改寫上句：<b class="text-blue-700">${alt.suggested_prev}</b>
+            </div>
+            <div class="text-[11px] text-slate-500">${alt.explanation}</div>
+          `;
+          prevList.appendChild(div);
+        });
+      }
+
+      // 3. 倒裝建議
+      const invList = document.getElementById('inversion-suggestions-list');
+      invList.innerHTML = '';
+      const inversions = data.inversions || [];
+      if (inversions.length === 0) {
+        invList.innerHTML = `<div class="text-center text-slate-400 py-4 text-xs">暫無倒裝句型</div>`;
+      } else {
+        inversions.forEach(inv => {
+          const div = document.createElement('div');
+          div.className = "p-2.5 rounded-xl border border-purple-100 bg-purple-50/40 text-xs flex justify-between items-center gap-2";
+          div.innerHTML = `
+            <div>
+              <div class="font-serif text-sm font-bold text-slate-900">${inv.line}</div>
+              <div class="text-[11px] text-purple-700">${inv.type}：${inv.note}</div>
+            </div>
+            <button onclick="applySuggestedLine('${escapeQuote(inv.line)}')" class="px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded text-[11px] font-medium transition flex-shrink-0">
+              套用倒裝
+            </button>
+          `;
+          invList.appendChild(div);
+        });
+      }
+
+      // 4. 下一句接龍
+      const nextList = document.getElementById('next-line-continuations-list');
+      nextList.innerHTML = '';
+      const nextContinuations = data.next_line_continuations || [];
+      if (nextContinuations.length === 0) {
+        nextList.innerHTML = `<div class="text-center text-slate-400 py-4 text-xs">暫無接龍建議</div>`;
+      } else {
+        nextContinuations.forEach(nc => {
+          const div = document.createElement('div');
+          div.className = "p-2.5 rounded-xl border border-amber-100 bg-amber-50/40 text-xs flex justify-between items-center gap-2";
+          div.innerHTML = `
+            <div>
+              <div class="font-serif text-sm font-bold text-slate-900">${nc.line}</div>
+              <div class="text-[11px] text-amber-700">${nc.note}</div>
+            </div>
+            <button onclick="insertNextLine('${escapeQuote(nc.line)}')" class="px-2 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[11px] font-medium transition flex-shrink-0">
+              ➕ 插入下句
+            </button>
+          `;
+          nextList.appendChild(div);
+        });
+      }
+
+      // 5. 歌仔冊同韻同主題經典四句聯借鑑
+      const kuaList = document.getElementById('kua-references-list');
+      if (kuaList) {
+        kuaList.innerHTML = '';
+        const kuaRefs = data.kua_a_tsheh_references || [];
+        if (kuaRefs.length === 0) {
+          kuaList.innerHTML = `<div class="text-center text-slate-400 py-6 text-xs">文庫中暫無押此韻之歌仔冊，可至「歌仔冊文庫」分頁匯入更多同主題唱本。</div>`;
+        } else {
+          kuaRefs.forEach(ref => {
+            const card = document.createElement('div');
+            card.className = "p-3 rounded-xl border border-amber-200/80 bg-amber-50/30 text-xs space-y-2 hover:bg-amber-50/60 transition";
+            
+            let linesHtml = ref.lines.map(ln => {
+              const rName = ln.line_in_stanza === 1 ? '起' : ln.line_in_stanza === 2 ? '承' : ln.line_in_stanza === 3 ? '轉' : '合';
+              const rBadge = (ln.line_in_stanza === 2 || ln.line_in_stanza === 4)
+                ? `<span class="text-[10px] px-1 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">韻跤(${rName})</span>`
+                : `<span class="text-[10px] px-1 py-0.2 rounded bg-slate-100 text-slate-500">${rName}</span>`;
+              
+              const matchCls = ln.is_match ? 'font-bold text-slate-900 bg-amber-100/60 px-1 rounded' : 'text-slate-700';
+              const rhymeCls = `badge-${ln.rhyme_group || 'none'}`;
+              
+              let toneBadge = '';
+              if (ln.tone) {
+                if (ln.tone === 1 || ln.tone === 5) {
+                  toneBadge = `<span class="text-[10px] px-1 py-0.2 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">🌟 ${ln.tone}調</span>`;
+                } else if (ln.tone === 7 || ln.tone === 8) {
+                  toneBadge = `<span class="text-[10px] px-1 py-0.2 rounded bg-teal-50 text-teal-700 border border-teal-200">${ln.tone}調</span>`;
+                } else {
+                  toneBadge = `<span class="text-[10px] px-1 py-0.2 rounded bg-slate-100 text-slate-500">${ln.tone}調</span>`;
+                }
+              }
+
+              return `
+                <div class="flex items-center justify-between text-xs py-1 border-b border-amber-100/60 last:border-b-0">
+                  <div class="flex items-center gap-2">
+                    ${rBadge}
+                    <span class="font-serif ${matchCls}">${ln.line_text}</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 text-[11px]">
+                    <span class="text-slate-600 font-serif"><b>${ln.end_char}</b></span>
+                    <span class="font-mono text-slate-400 text-[10px]">(${ln.end_tailo})</span>
+                    ${toneBadge}
+                    <span class="px-1.5 py-0.2 text-[10px] rounded border font-medium ${rhymeCls}">${ln.rhyme_group}</span>
+                    <button onclick="insertKuaLineToLyrics('${escapeQuote(ln.line_text)}')" class="ml-1 px-1.5 py-0.5 rounded bg-amber-100 hover:bg-amber-200 text-amber-800 text-[10px] font-medium transition" title="引用此句至歌詞">
+                      引用
+                    </button>
+                  </div>
+                </div>
+              `;
+            }).join('');
+
+            const allLinesText = ref.lines.map(l => l.line_text).join('\n');
+
+            card.innerHTML = `
+              <div class="flex justify-between items-center pb-1.5 border-b border-amber-200/60">
+                <div class="flex items-center gap-1.5">
+                  <span class="font-bold text-slate-800 text-xs">《${ref.doc_title}》</span>
+                  <span class="px-1.5 py-0.2 rounded text-[10px] bg-amber-100 text-amber-900 border border-amber-200">${ref.theme || '七字仔'}</span>
+                  <span class="text-[10px] text-slate-400">第 ${ref.stanza_index} 葩</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button onclick="copyToClipboard('${escapeQuote(allLinesText)}')" class="text-[11px] text-slate-500 hover:text-slate-800 transition flex items-center gap-1">
+                    <i class="fa-regular fa-copy"></i> 複製此葩
+                  </button>
+                  <button onclick="insertKuaStanzaLines('${escapeQuote(allLinesText)}')" class="text-[11px] text-amber-700 hover:text-amber-900 font-medium transition flex items-center gap-1">
+                    <i class="fa-solid fa-plus"></i> 全葩引用
+                  </button>
+                </div>
+              </div>
+              <div class="space-y-0.5">
+                ${linesHtml}
+              </div>
+            `;
+            kuaList.appendChild(card);
+          });
+        }
+      }
+    }
+
+    // 套用改寫至目前歌詞編輯區
+    function applySuggestedLine(newLineText) {
+      const textarea = document.getElementById('lyrics-input');
+      const lines = textarea.value.split('\n');
+      if (lines[selectedLineIndex] !== undefined) {
+        lines[selectedLineIndex] = newLineText;
+        textarea.value = lines.join('\n');
+        onLyricsChange();
+        
+        // 更新當前焦點橫幅文字
+        document.getElementById('focus-line-text').textContent = newLineText;
+        alert(`已成功將第 ${selectedLineIndex + 1} 行改寫為：「${newLineText}」`);
+      }
+    }
+
+    // 套用改寫上一句
+    function applyPrevLineSwap(newPrevText) {
+      const textarea = document.getElementById('lyrics-input');
+      const lines = textarea.value.split('\n');
+      
+      // 找出上一有效行
+      let prevIdx = -1;
+      for (let p = selectedLineIndex - 1; p >= 0; p--) {
+        if (lines[p].trim() && !lines[p].startsWith('[')) {
+          prevIdx = p;
+          break;
+        }
+      }
+
+      if (prevIdx !== -1) {
+        lines[prevIdx] = newPrevText;
+        textarea.value = lines.join('\n');
+        onLyricsChange();
+        document.getElementById('focus-prev-text').textContent = newPrevText;
+        alert(`已成功將第 ${prevIdx + 1} 行改寫為：「${newPrevText}」`);
+      }
+    }
+
+    // 插入為下一句
+    function insertNextLine(nextLineText) {
+      const textarea = document.getElementById('lyrics-input');
+      const lines = textarea.value.split('\n');
+      lines.splice(selectedLineIndex + 1, 0, nextLineText);
+      textarea.value = lines.join('\n');
+      onLyricsChange();
+      alert(`已成功插入下一句：「${nextLineText}」`);
+    }
+
+    // 啟動 Gemini AI 深度詩意生成
+    async function requestGeminiGeneration() {
+      const apiKey = localStorage.getItem('taigi_gemini_api_key');
+      if (!apiKey && !serverHasEnvKey) {
+        openApiKeyModal();
+        return;
+      }
+
+      const curLine = document.getElementById('focus-line-text').textContent;
+      const prevLine = document.getElementById('focus-prev-text').textContent;
+      const nextLine = document.getElementById('focus-next-text').textContent;
+      const targetGroup = document.getElementById('assistant-target-rhyme').value;
+      const btn = document.getElementById('btn-gemini-generate');
+      const container = document.getElementById('gemini-result-container');
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> AI 生成中...`;
+      container.textContent = "Gemini 正在以台語詩詞美學與前後文意深度創作中，請稍候...";
+
+      try {
+        const res = await fetch('/api/suggest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            current_line: curLine,
+            target_rhyme_group: targetGroup,
+            prev_line: prevLine === '（無）' ? '' : prevLine,
+            next_line: nextLine === '（無）' ? '' : nextLine,
+            role_index: (currentAnalysis && currentAnalysis.lines[selectedLineIndex]) ? currentAnalysis.lines[selectedLineIndex].role_index : 2,
+            api_key: apiKey,
+            request_ai_gemini: true
+          })
+        });
+        const data = await res.json();
+        if (data.gemini_suggestions) {
+          container.textContent = data.gemini_suggestions;
+        } else {
+          container.textContent = "Gemini API 回傳空內容或 Key 有誤，請確認 Key 權限。";
+        }
+      } catch (err) {
+        container.textContent = `生成失敗: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-sparkles"></i> 啟動 AI 創作`;
+      }
+    }
+
+    // ==========================================
+    // 辭典反查功能 (Dictionary Functions)
+    // ==========================================
+    function renderDictRhymeTags() {
+      const container = document.getElementById('dict-rhyme-tags');
+      container.innerHTML = '';
+
+      // 全部標籤
+      const allBtn = document.createElement('button');
+      allBtn.className = `px-2.5 py-1 rounded-lg text-xs font-medium border transition ${selectedRhymeGroupFilter === '' ? 'bg-taigi-600 text-white border-taigi-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`;
+      allBtn.textContent = '全部韻部';
+      allBtn.onclick = () => { selectedRhymeGroupFilter = ''; renderDictRhymeTags(); loadDictionaryWords(0); };
+      container.appendChild(allBtn);
+
+      for (const [gid, info] of Object.entries(rhymeGroupsData)) {
+        const btn = document.createElement('button');
+        const isSelected = selectedRhymeGroupFilter === gid;
+        btn.className = `px-2.5 py-1 rounded-lg text-xs font-medium border transition ${isSelected ? 'bg-taigi-600 text-white border-taigi-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`;
+        btn.textContent = `${gid} (${info.variants.slice(0, 3).join(',')}...)`;
+        btn.onclick = () => { selectedRhymeGroupFilter = gid; renderDictRhymeTags(); loadDictionaryWords(0); };
+        container.appendChild(btn);
+      }
+    }
+
+    async function loadDictionaryWords(offset = 0) {
+      currentDictOffset = offset;
+      const chars = document.getElementById('dict-filter-chars').value;
+      const tone = document.getElementById('dict-filter-tone').value;
+      const pos = document.getElementById('dict-filter-pos').value;
+      const kw = document.getElementById('dict-search-keyword').value;
+
+      const params = new URLSearchParams({
+        limit: dictLimit,
+        offset: currentDictOffset
+      });
+      if (selectedRhymeGroupFilter) params.append('rhyme_group', selectedRhymeGroupFilter);
+      if (chars) params.append('char_count', chars);
+      if (tone) params.append('tone', tone);
+      if (pos) params.append('pos', pos);
+      if (kw) params.append('keyword', kw);
+
+      const container = document.getElementById('dict-results-container');
+      container.innerHTML = `<div class="col-span-full text-center text-slate-400 py-12"><i class="fa-solid fa-spinner fa-spin mr-2"></i>載入辭典詞目中...</div>`;
+
+      try {
+        const res = await fetch(`/api/dictionary?${params.toString()}`);
+        const data = await res.json();
+        
+        document.getElementById('dict-total-count').textContent = data.total;
+        document.getElementById('dict-current-page').textContent = Math.floor(currentDictOffset / dictLimit) + 1;
+
+        document.getElementById('dict-btn-prev').disabled = currentDictOffset === 0;
+        document.getElementById('dict-btn-next').disabled = currentDictOffset + dictLimit >= data.total;
+
+        container.innerHTML = '';
+        if (data.words.length === 0) {
+          container.innerHTML = `<div class="col-span-full text-center text-slate-400 py-12">查無符合條件的台語詞目</div>`;
+          return;
+        }
+
+        data.words.forEach(w => {
+          const card = document.createElement('div');
+          const groupClass = `badge-${w.rhyme_group || 'none'}`;
+          let toneBadge = '';
+          if (w.tone) {
+            if (w.tone === 1 || w.tone === 5) {
+              toneBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold" title="最優合律聲調">🌟 ${w.tone}調</span>`;
+            } else if (w.tone === 7 || w.tone === 8) {
+              toneBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-medium" title="合格聲調">${w.tone}調</span>`;
+            } else {
+              toneBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-50 text-slate-500 border border-slate-200">${w.tone}調</span>`;
+            }
+          }
+
+          card.className = "bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-taigi-500 hover:shadow-md transition flex flex-col justify-between";
+          card.innerHTML = `
+            <div>
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <h4 class="text-xl font-serif font-bold text-slate-900">${w.hanji}</h4>
+                  <div class="text-xs font-mono text-slate-500 mt-0.5">${w.tailo}</div>
+                </div>
+                <div class="flex flex-col items-end gap-1">
+                  <span class="px-2 py-0.5 rounded text-[11px] border font-medium ${groupClass}">${w.rhyme_group}</span>
+                  ${toneBadge}
+                </div>
+              </div>
+              ${w.pos ? `<div class="text-[11px] text-taigi-700 font-medium mt-2"><span class="px-1.5 py-0.2 rounded bg-taigi-50 border border-taigi-200">${w.pos}</span></div>` : ''}
+              <div class="text-xs text-slate-600 mt-2 leading-relaxed line-clamp-3">
+                ${w.definition || '（無釋義）'}
+              </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 mt-3 flex justify-between items-center text-xs">
+              <button onclick="copyToClipboard('${w.hanji}')" class="text-slate-400 hover:text-slate-600 transition flex items-center gap-1">
+                <i class="fa-regular fa-copy"></i> 複製詞彙
+              </button>
+              <button onclick="insertWordIntoLyrics('${w.hanji}')" class="px-2.5 py-1 bg-taigi-50 hover:bg-taigi-100 text-taigi-800 border border-taigi-200 rounded font-medium transition flex items-center gap-1">
+                <i class="fa-solid fa-plus"></i> 加進歌詞
+              </button>
+            </div>
+          `;
+          container.appendChild(card);
+        });
+
+      } catch (err) {
+        console.error('查詢辭典失敗:', err);
+      }
+    }
+
+    function prevDictPage() {
+      if (currentDictOffset >= dictLimit) {
+        loadDictionaryWords(currentDictOffset - dictLimit);
+      }
+    }
+
+    function nextDictPage() {
+      loadDictionaryWords(currentDictOffset + dictLimit);
+    }
+
+    function insertWordIntoLyrics(word) {
+      const textarea = document.getElementById('lyrics-input');
+      textarea.value += (textarea.value ? '\n' : '') + word;
+      onLyricsChange();
+      alert(`已將「${word}」加至歌詞尾行！`);
+    }
+
+    // ==========================================
+    // 13 大韻部指南渲染 (Guide Grid)
+    // ==========================================
+    function renderGuideGrid() {
+      const container = document.getElementById('rhyme-groups-guide-grid');
+      container.innerHTML = '';
+
+      const TYPE_NAMES = {
+        open: "開尾韻 / 複元音",
+        nasal: "陽聲韻 (鼻音收尾)",
+        stop: "入聲韻 (塞音收尾)"
+      };
+
+      for (const [gid, info] of Object.entries(rhymeGroupsData)) {
+        const card = document.createElement('div');
+        const badgeClass = `badge-${gid}`;
+        card.className = "bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between";
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-1 rounded-lg text-xs font-bold border ${badgeClass}">${gid}</span>
+              <span class="text-xs text-slate-400 font-medium">${TYPE_NAMES[info.type] || info.type}</span>
+            </div>
+            <h3 class="text-base font-bold text-slate-900 mt-2">${info.description}</h3>
+
+            <div class="mt-3">
+              <div class="text-xs text-slate-400 mb-1.5">包含韻母 (Variants)：</div>
+              <div class="flex flex-wrap gap-1">
+                ${info.variants.map(v => `<span class="px-2 py-0.5 text-xs font-mono rounded bg-slate-100 text-slate-700 border border-slate-200">${v}</span>`).join('')}
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 mt-4 flex justify-between items-center">
+            <button onclick="filterDictByGroup('${gid}')" class="text-xs text-taigi-600 hover:text-taigi-800 font-medium flex items-center gap-1 transition">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i> 查看此韻所有辭典詞彙
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      }
+    }
+
+    function filterDictByGroup(gid) {
+      selectedRhymeGroupFilter = gid;
+      switchTab('dictionary');
+      renderDictRhymeTags();
+      loadDictionaryWords(0);
+    }
+
+    // ==========================================
+    // 輔助功能 (API Key, 匯出, 複製)
+    // ==========================================
+    let serverHasEnvKey = false;
+
+    async function checkConfigStatus() {
+      try {
+        const res = await fetch('/api/config');
+        const data = await res.json();
+        serverHasEnvKey = Boolean(data.has_env_key);
+        const statusText = document.getElementById('env-status-text');
+        if (data.has_env_key) {
+          statusText.innerHTML = '<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i>後端 .env 已配置金鑰 (自動啟用)</span>';
+        } else {
+          statusText.innerHTML = '<span class="text-slate-400">未設定 .env (可直接在下方輸入)</span>';
+        }
+      } catch (e) {
+        console.warn('無法取得環境設定狀態:', e);
+      }
+    }
+
+    function openApiKeyModal() {
+      document.getElementById('api-key-modal').classList.remove('hidden');
+      checkConfigStatus();
+    }
+
+    function closeApiKeyModal() {
+      document.getElementById('api-key-modal').classList.add('hidden');
+      const feedback = document.getElementById('key-test-feedback');
+      if (feedback) feedback.classList.add('hidden');
+    }
+
+    async function testApiKeyConnection() {
+      const key = document.getElementById('input-gemini-key').value.trim();
+      const btn = document.getElementById('btn-test-key');
+      const feedback = document.getElementById('key-test-feedback');
+      
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> 測試中...';
+      feedback.classList.remove('hidden', 'bg-emerald-50', 'text-emerald-700', 'border-emerald-200', 'bg-rose-50', 'text-rose-700', 'border-rose-200');
+      feedback.classList.add('bg-slate-100', 'text-slate-600', 'border', 'border-slate-200');
+      feedback.textContent = '連線測試中，請稍候...';
+
+      try {
+        const res = await fetch('/api/test_key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ api_key: key })
+        });
+        const data = await res.json();
+        if (data.success) {
+          feedback.className = 'mt-2 text-[11px] p-2 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 font-medium';
+          feedback.innerHTML = '<i class="fa-solid fa-circle-check mr-1 text-emerald-600"></i> ' + data.message;
+        } else {
+          feedback.className = 'mt-2 text-[11px] p-2 rounded-lg bg-rose-50 text-rose-800 border border-rose-200';
+          feedback.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1 text-rose-600"></i> ' + data.message;
+        }
+      } catch (err) {
+        feedback.className = 'mt-2 text-[11px] p-2 rounded-lg bg-rose-50 text-rose-800 border border-rose-200';
+        feedback.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i> 連線伺服器失敗：' + err.message;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-vial"></i> 測試連線';
+      }
+    }
+
+    function saveApiKey() {
+      const key = document.getElementById('input-gemini-key').value.trim();
+      localStorage.setItem('taigi_gemini_api_key', key);
+      closeApiKeyModal();
+      alert('Gemini API Key 設定已儲存於瀏覽器！');
+    }
+
+    function clearSavedApiKey() {
+      if (confirm('確定要清除瀏覽器儲存的 API Key 嗎？')) {
+        localStorage.removeItem('taigi_gemini_api_key');
+        document.getElementById('input-gemini-key').value = '';
+        const feedback = document.getElementById('key-test-feedback');
+        if (feedback) feedback.classList.add('hidden');
+        alert('已清除網頁儲存的 Key！');
+      }
+    }
+
+
+    function exportLyrics() {
+      const text = document.getElementById('lyrics-input').value;
+      if (!text.trim()) {
+        alert('請先輸入歌詞！');
+        return;
+      }
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `台語歌詞創作_${new Date().toISOString().slice(0,10)}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function copyToClipboard(str) {
+      navigator.clipboard.writeText(str).then(() => {
+        alert(`已複製「${str}」至剪貼簿！`);
+      });
+    }
+
+    function escapeQuote(str) {
+      return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    // ==========================================
+    // 歌仔冊文庫功能 (Kua-á-tsheh Functions)
+    // ==========================================
+    
+    // 載入歌仔冊主題清單與統計
+    async function loadKuaThemes() {
+      try {
+        const res = await fetch('/api/kua_a_tsheh');
+        const data = await res.json();
+        
+        // 更新頁首統計
+        const statsEl = document.getElementById('kua-stats-header');
+        if (statsEl) {
+          statsEl.textContent = `共收錄 ${data.total_docs || 0} 篇七字仔四句聯`;
+        }
+
+        // 渲染主題標籤
+        const tagsContainer = document.getElementById('kua-theme-tags');
+        if (tagsContainer) {
+          tagsContainer.innerHTML = '';
+          
+          const allBtn = document.createElement('button');
+          allBtn.className = `px-2.5 py-1 rounded-lg text-xs font-medium border transition ${selectedKuaTheme === '' ? 'bg-taigi-600 text-white border-taigi-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`;
+          allBtn.textContent = '全部主題';
+          allBtn.onclick = () => {
+            selectedKuaTheme = '';
+            loadKuaThemes();
+            loadKuaDocList(0);
+          };
+          tagsContainer.appendChild(allBtn);
+
+          (data.themes || []).forEach(th => {
+            const btn = document.createElement('button');
+            const isSelected = selectedKuaTheme === th;
+            btn.className = `px-2.5 py-1 rounded-lg text-xs font-medium border transition ${isSelected ? 'bg-taigi-600 text-white border-taigi-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`;
+            btn.textContent = th;
+            btn.onclick = () => {
+              selectedKuaTheme = th;
+              loadKuaThemes();
+              loadKuaDocList(0);
+            };
+            tagsContainer.appendChild(btn);
+          });
+        }
+
+        kuaThemesLoaded = true;
+      } catch (err) {
+        console.error('載入歌仔冊主題失敗:', err);
+      }
+    }
+
+    // 載入歌仔冊文章清單 (分頁與篩選)
+    async function loadKuaDocList(offset = 0) {
+      currentKuaOffset = offset;
+      const rhymeFilter = document.getElementById('kua-filter-rhyme') ? document.getElementById('kua-filter-rhyme').value : '';
+      const kw = document.getElementById('kua-search-keyword') ? document.getElementById('kua-search-keyword').value.trim() : '';
+
+      const params = new URLSearchParams({
+        limit: kuaLimit,
+        offset: currentKuaOffset
+      });
+      if (selectedKuaTheme) params.append('theme', selectedKuaTheme);
+      if (rhymeFilter) params.append('rhyme_group', rhymeFilter);
+      if (kw) params.append('keyword', kw);
+
+      const listContainer = document.getElementById('kua-docs-list-container');
+      if (listContainer) {
+        listContainer.innerHTML = `<div class="text-center text-slate-400 py-12 text-xs"><i class="fa-solid fa-spinner fa-spin mr-1"></i>載入歌仔冊篇章中...</div>`;
+      }
+
+      try {
+        const res = await fetch(`/api/kua_a_tsheh?${params.toString()}`);
+        const data = await res.json();
+
+        const countEl = document.getElementById('kua-list-count');
+        if (countEl) countEl.textContent = `共 ${data.total || 0} 篇`;
+
+        if (!listContainer) return;
+        listContainer.innerHTML = '';
+
+        if (!data.docs || data.docs.length === 0) {
+          listContainer.innerHTML = `<div class="text-center text-slate-400 py-12 text-xs">查無符合條件之歌仔冊</div>`;
+          return;
+        }
+
+        data.docs.forEach((doc, idx) => {
+          const card = document.createElement('div');
+          const isSelected = currentKuaDocId === doc.id || (!currentKuaDocId && idx === 0);
+          
+          card.id = `kua-doc-card-${doc.id}`;
+          card.className = `p-3 rounded-xl border transition cursor-pointer kua-doc-item ${isSelected ? 'bg-amber-50/80 border-amber-300 shadow-sm' : 'bg-slate-50/50 border-slate-200 hover:bg-white hover:border-taigi-400'}`;
+          card.onclick = () => selectKuaDoc(doc.id);
+
+          card.innerHTML = `
+            <div class="flex items-start justify-between gap-1">
+              <h4 class="font-serif font-bold text-slate-900 text-sm">${doc.title}</h4>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-900 border border-amber-200 flex-shrink-0">${doc.theme || '七字仔'}</span>
+            </div>
+            <div class="flex items-center gap-2 text-[11px] text-slate-400 mt-1">
+              <span>${doc.author || '民間唱本'}</span>
+              <span>•</span>
+              <span>${doc.stanzas_count || 0} 葩 (${doc.lines_count || 0} 句)</span>
+            </div>
+            ${doc.snippet ? `<div class="text-xs text-slate-600 font-serif mt-1.5 line-clamp-1 italic">${doc.snippet}</div>` : ''}
+          `;
+
+          listContainer.appendChild(card);
+        });
+
+        // 預設選取第一篇或維持當前篇
+        if (!currentKuaDocId && data.docs.length > 0) {
+          selectKuaDoc(data.docs[0].id);
+        } else if (currentKuaDocId) {
+          const exists = data.docs.some(d => d.id === currentKuaDocId);
+          if (exists) {
+            selectKuaDoc(currentKuaDocId);
+          } else if (data.docs.length > 0) {
+            selectKuaDoc(data.docs[0].id);
+          }
+        }
+
+      } catch (err) {
+        console.error('取得歌仔冊清單失敗:', err);
+        if (listContainer) {
+          listContainer.innerHTML = `<div class="text-center text-rose-500 py-8 text-xs">載入失敗: ${err.message}</div>`;
+        }
+      }
+    }
+
+    // 選取並載入單篇歌仔冊詳細四句聯內容
+    async function selectKuaDoc(docId) {
+      currentKuaDocId = docId;
+
+      // 更新左側卡片高亮樣式
+      document.querySelectorAll('.kua-doc-item').forEach(el => {
+        el.classList.remove('bg-amber-50/80', 'border-amber-300', 'shadow-sm');
+        el.classList.add('bg-slate-50/50', 'border-slate-200');
+      });
+      const activeEl = document.getElementById(`kua-doc-card-${docId}`);
+      if (activeEl) {
+        activeEl.classList.remove('bg-slate-50/50', 'border-slate-200');
+        activeEl.classList.add('bg-amber-50/80', 'border-amber-300', 'shadow-sm');
+      }
+
+      const stanzasContainer = document.getElementById('kua-stanzas-container');
+      if (stanzasContainer) {
+        stanzasContainer.innerHTML = `<div class="h-full flex items-center justify-center text-slate-400 py-16 text-sm"><i class="fa-solid fa-spinner fa-spin mr-2"></i>載入四句聯段落中...</div>`;
+      }
+
+      try {
+        const res = await fetch(`/api/kua_a_tsheh/${docId}`);
+        const data = await res.json();
+        currentKuaDocData = data;
+
+        // 更新右側表頭資訊
+        const themeEl = document.getElementById('kua-detail-theme');
+        const authorEl = document.getElementById('kua-detail-author');
+        const titleEl = document.getElementById('kua-detail-title');
+        const descEl = document.getElementById('kua-detail-desc');
+
+        if (themeEl) themeEl.textContent = data.theme || '七字仔四句聯';
+        if (authorEl) authorEl.textContent = `${data.author || '民間唱本'} • 共 ${data.total_stanzas || 0} 葩`;
+        if (titleEl) titleEl.textContent = data.title;
+        if (descEl) descEl.textContent = data.description || '台灣傳統念歌、歌仔戲、相褒歌傳統經典，七字對偶音韻典範。';
+
+        // 渲染各葩四句聯
+        if (!stanzasContainer) return;
+        stanzasContainer.innerHTML = '';
+
+        if (!data.stanzas || data.stanzas.length === 0) {
+          stanzasContainer.innerHTML = `<div class="text-center text-slate-400 py-12 text-sm">此文章內無可辨識之四句聯段落。</div>`;
+          return;
+        }
+
+        data.stanzas.forEach(s => {
+          const stanzaCard = document.createElement('div');
+          stanzaCard.className = "p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-amber-300 transition shadow-xs space-y-2.5";
+
+          // 段落標頭
+          const stanzaAllLinesText = s.lines.map(l => l.line_text).join('\n');
+          
+          let headerHtml = `
+            <div class="flex justify-between items-center pb-2 border-b border-slate-200/70">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-900 font-bold flex items-center justify-center text-xs">
+                  ${s.stanza_index}
+                </span>
+                <span class="font-serif font-bold text-slate-800 text-sm">第 ${s.stanza_index} 葩</span>
+                <span class="text-slate-400 text-xs">(${s.lines.length} 句)</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button onclick="copyToClipboard('${escapeQuote(stanzaAllLinesText)}')" class="px-2 py-1 rounded bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs transition flex items-center gap-1">
+                  <i class="fa-regular fa-copy"></i> 複製此葩
+                </button>
+                <button onclick="insertKuaStanzaLines('${escapeQuote(stanzaAllLinesText)}')" class="px-2 py-1 rounded bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-medium transition flex items-center gap-1">
+                  <i class="fa-solid fa-plus"></i> 全葩引用至歌詞
+                </button>
+              </div>
+            </div>
+          `;
+
+          // 逐句條目
+          let linesHtml = s.lines.map(ln => {
+            const rIdx = ln.line_in_stanza;
+            let roleName = '起';
+            let roleBadge = '<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">起句 (1)</span>';
+            if (rIdx === 2) {
+              roleName = '承';
+              roleBadge = '<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold">韻跤 (2) 🌟1、5最好</span>';
+            } else if (rIdx === 3) {
+              roleName = '轉';
+              roleBadge = '<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">轉折 (3) 自由</span>';
+            } else if (rIdx === 4) {
+              roleName = '合';
+              roleBadge = '<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold">韻跤 (4) 🌟1、5最好</span>';
+            }
+
+            let toneBadge = '';
+            if (ln.tone) {
+              if (ln.tone === 1 || ln.tone === 5) {
+                toneBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">🌟 ${ln.tone}調</span>`;
+              } else if (ln.tone === 7 || ln.tone === 8) {
+                toneBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded bg-teal-50 text-teal-800 border border-teal-200">${ln.tone}調</span>`;
+              } else {
+                toneBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">${ln.tone}調</span>`;
+              }
+            }
+
+            const rhymeCls = `badge-${ln.rhyme_group || 'none'}`;
+
+            return `
+              <div class="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg bg-white border border-slate-100 hover:border-slate-300 transition">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  ${roleBadge}
+                  <span class="font-serif text-sm font-semibold text-slate-900">${ln.line_text}</span>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                  <span class="text-xs text-slate-600 font-serif">尾字: <b>${ln.end_char}</b></span>
+                  <span class="font-mono text-slate-400 text-xs">(${ln.end_tailo})</span>
+                  ${toneBadge}
+                  <span class="px-2 py-0.5 text-xs rounded border font-medium ${rhymeCls}">${ln.rhyme_group}</span>
+                  <button onclick="insertKuaLineToLyrics('${escapeQuote(ln.line_text)}')" class="px-2 py-1 bg-taigi-50 hover:bg-taigi-100 text-taigi-800 border border-taigi-200 rounded text-xs font-medium transition" title="引用此句至歌詞編輯區">
+                    引用本句
+                  </button>
+                  <button onclick="copyToClipboard('${escapeQuote(ln.line_text)}')" class="p-1 text-slate-400 hover:text-slate-600 transition" title="複製本句">
+                    <i class="fa-regular fa-copy"></i>
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          stanzaCard.innerHTML = headerHtml + `<div class="space-y-1.5">${linesHtml}</div>`;
+          stanzasContainer.appendChild(stanzaCard);
+        });
+
+      } catch (err) {
+        console.error('取得歌仔冊詳情失敗:', err);
+        if (stanzasContainer) {
+          stanzasContainer.innerHTML = `<div class="text-center text-rose-500 py-12 text-sm">載入篇章失敗: ${err.message}</div>`;
+        }
+      }
+    }
+
+    // 複製整篇歌仔冊內文
+    function copyFullKuaContent() {
+      if (!currentKuaDocData) {
+        alert('請先選取一篇歌仔冊！');
+        return;
+      }
+      const text = currentKuaDocData.raw_content || '';
+      copyToClipboard(text);
+    }
+
+    // 複製單一葩四句聯
+    function copyKuaStanza(stanzaIndex) {
+      if (!currentKuaDocData || !currentKuaDocData.stanzas) return;
+      const s = currentKuaDocData.stanzas.find(x => x.stanza_index === stanzaIndex);
+      if (s) {
+        const text = s.lines.map(l => l.line_text).join('\n');
+        copyToClipboard(text);
+      }
+    }
+
+    // 引用單句至歌詞末行
+    function insertKuaLineToLyrics(lineText) {
+      const textarea = document.getElementById('lyrics-input');
+      textarea.value += (textarea.value ? '\n' : '') + lineText;
+      onLyricsChange();
+      alert(`已將「${lineText}」引用至歌詞末尾！`);
+    }
+
+    // 引用全葩至歌詞末行
+    function insertKuaStanzaLines(stanzaLinesText) {
+      const textarea = document.getElementById('lyrics-input');
+      textarea.value += (textarea.value ? '\n\n' : '') + stanzaLinesText;
+      onLyricsChange();
+      alert(`已將四句聯引用至歌詞末尾！`);
+    }
+
+    // 刪除目前選取之歌仔冊
+    async function deleteCurrentKuaDoc() {
+      if (!currentKuaDocId) {
+        alert('請先選取要刪除的歌仔冊！');
+        return;
+      }
+      const title = currentKuaDocData ? currentKuaDocData.title : '此篇文章';
+      if (!confirm(`確定要刪除《${title}》嗎？刪除後無法復原。`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/kua_a_tsheh/${currentKuaDocId}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('已成功刪除歌仔冊文章！');
+          currentKuaDocId = null;
+          currentKuaDocData = null;
+          loadKuaThemes();
+          loadKuaDocList(0);
+        } else {
+          alert(`刪除失敗: ${data.message || '未知錯誤'}`);
+        }
+      } catch (err) {
+        alert(`刪除失敗: ${err.message}`);
+      }
+    }
+
+    // 開啟匯入彈窗
+    function openKuaImportModal() {
+      document.getElementById('kua-import-modal').classList.remove('hidden');
+      document.getElementById('kua-import-title').value = '';
+      document.getElementById('kua-import-theme').value = selectedKuaTheme || '';
+      document.getElementById('kua-import-author').value = '';
+      document.getElementById('kua-import-desc').value = '';
+      document.getElementById('kua-import-content').value = '';
+      const statusText = document.getElementById('kua-import-status-text');
+      if (statusText) statusText.textContent = '點擊匯入後，系統將逐句進行音韻辨識與入庫';
+    }
+
+    // 關閉匯入彈窗
+    function closeKuaImportModal() {
+      document.getElementById('kua-import-modal').classList.add('hidden');
+    }
+
+    // 讀取上傳之 .txt 檔案內容
+    function handleKuaFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const titleInput = document.getElementById('kua-import-title');
+      if (!titleInput.value.trim()) {
+        const fname = file.name.replace(/\.[^/.]+$/, "");
+        titleInput.value = fname;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        document.getElementById('kua-import-content').value = e.target.result;
+      };
+      reader.readAsText(file, "UTF-8");
+    }
+
+    // 提交匯入歌仔冊
+    async function submitKuaImport() {
+      const title = document.getElementById('kua-import-title').value.trim();
+      const theme = document.getElementById('kua-import-theme').value.trim() || '傳統歌仔冊';
+      const author = document.getElementById('kua-import-author').value.trim() || '民間唱本';
+      const description = document.getElementById('kua-import-desc').value.trim();
+      const content = document.getElementById('kua-import-content').value.trim();
+
+      if (!title) {
+        alert('請填寫文章標題！');
+        document.getElementById('kua-import-title').focus();
+        return;
+      }
+      if (!content) {
+        alert('請填寫或上傳歌仔冊內文！');
+        document.getElementById('kua-import-content').focus();
+        return;
+      }
+
+      const btn = document.getElementById('btn-submit-kua');
+      const statusText = document.getElementById('kua-import-status-text');
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> 解析入庫中...`;
+      if (statusText) statusText.textContent = '系統正在進行逐句台羅拼音分析與四句聯切分...';
+
+      try {
+        const res = await fetch('/api/kua_a_tsheh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: title,
+            theme: theme,
+            author: author,
+            description: description,
+            content: content
+          })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          alert(`成功匯入《${data.doc.title}》！\n共解析 ${data.doc.stanzas_count} 葩四句聯（${data.doc.lines_count} 句）。`);
+          closeKuaImportModal();
+          kuaThemesLoaded = false;
+          await loadKuaThemes();
+          await loadKuaDocList(0);
+          selectKuaDoc(data.doc.id);
+        } else {
+          alert(`匯入失敗: ${data.message || '格式有誤'}`);
+        }
+      } catch (err) {
+        alert(`連線或匯入失敗: ${err.message}`);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-check"></i> 立即解析並匯入`;
+      }
+    }
+  </script>
+</body>
+</html>

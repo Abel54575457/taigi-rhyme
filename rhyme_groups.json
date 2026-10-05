@@ -1,0 +1,80 @@
+{
+  "OPEN_A": {
+    "group_id": "OPEN_A",
+    "description": "A類開尾韻（口音、鼻化、介音通押）",
+    "type": "open",
+    "variants": ["a", "ah", "ann", "annh", "ia", "iah", "iann", "iannh", "ua", "uah", "uann", "uannh"]
+  },
+  "OPEN_E": {
+    "group_id": "OPEN_E",
+    "description": "E類開尾韻",
+    "type": "open",
+    "variants": ["e", "eh", "enn", "ennh", "ue", "ueh", "uenn", "uennh"]
+  },
+  "OPEN_I": {
+    "group_id": "OPEN_I",
+    "description": "I類開尾韻",
+    "type": "open",
+    "variants": ["i", "ih", "inn", "innh"]
+  },
+  "OPEN_O": {
+    "group_id": "OPEN_O",
+    "description": "O類開尾韻",
+    "type": "open",
+    "variants": ["o", "oh", "oo", "ooh", "onn", "onnh", "io", "ioh"]
+  },
+  "OPEN_U": {
+    "group_id": "OPEN_U",
+    "description": "U類開尾韻",
+    "type": "open",
+    "variants": ["u", "uh", "unnh"]
+  },
+  "COMPOUND_AU": {
+    "group_id": "COMPOUND_AU",
+    "description": "AU/IU類通押",
+    "type": "open",
+    "variants": ["au", "auh", "aunn", "aunnh", "iau", "iauh", "iaunn", "iu", "iuh", "iunn"]
+  },
+  "COMPOUND_AI": {
+    "group_id": "COMPOUND_AI",
+    "description": "AI/UI類通押",
+    "type": "open",
+    "variants": ["ai", "aih", "ainn", "uai", "uaih", "uainn", "ui", "uih", "uinn"]
+  },
+  "NASAL_AN": {
+    "group_id": "NASAL_AN",
+    "description": "AN類陽聲通押（-m, -n, -ng）",
+    "type": "nasal",
+    "variants": ["an", "am", "ang", "ian", "iam", "iang", "uan", "uang"]
+  },
+  "NASAL_EN": {
+    "group_id": "NASAL_EN",
+    "description": "IN/ENG類陽聲通押",
+    "type": "nasal",
+    "variants": ["in", "im", "ing", "en", "eng"]
+  },
+  "NASAL_ON": {
+    "group_id": "NASAL_ON",
+    "description": "ONG/OM類陽聲通押",
+    "type": "nasal",
+    "variants": ["ong", "om", "iong"]
+  },
+  "STOP_AT": {
+    "group_id": "STOP_AT",
+    "description": "AT類塞音入聲通押（-p, -t, -k）",
+    "type": "stop",
+    "variants": ["at", "ap", "ak", "iat", "iap", "iak", "uat", "uak"]
+  },
+  "STOP_ET": {
+    "group_id": "STOP_ET",
+    "description": "IT/EK類塞音入聲通押",
+    "type": "stop",
+    "variants": ["it", "ip", "ik", "ek"]
+  },
+  "STOP_OK": {
+    "group_id": "STOP_OK",
+    "description": "OK/OP類塞音入聲通押",
+    "type": "stop",
+    "variants": ["ok", "op", "iok"]
+  }
+}
