@@ -2,6 +2,7 @@ services:
   - type: web
     name: taigi-rhyme
     env: python
+    autoDeploy: true
     buildCommand: pip install -r requirements.txt
     startCommand: python server.py
     envVars:

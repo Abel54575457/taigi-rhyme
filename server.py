@@ -34,6 +34,9 @@ def enable_cors():
 
 @app.route('/', method='GET')
 def index():
+    response.set_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+    response.set_header('Pragma', 'no-cache')
+    response.set_header('Expires', '0')
     return static_file('index.html', root=str(BASE_DIR))
 
 @app.route('/static/<filename:path>', method='GET')
