@@ -1,4 +1,4 @@
-# 台語押韻與寫歌 AI 創作工作台 (Taiwanese Rhyme & Songwriting AI Studio)
+# 台灣唸歌仔 AI創作工作台 (Taiwanese Rhyme & Songwriting AI Studio)
 
 專為台語流行歌、民謠、七字仔、四句聯創作者設計的一站式 AI 寫歌與押韻輔助系統。整合台灣話 **十三大通押韻部規則** 與 **教育部《臺灣閩南語常用詞辭典》28,695 筆權威詞庫**，支援即時押韻檢測、字詞智慧替換、前後句互換調適、句型倒裝與 Gemini AI 靈感擴寫。
 
