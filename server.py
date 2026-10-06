@@ -34,10 +34,11 @@ def enable_cors():
 
 @app.route('/', method='GET')
 def index():
-    response.set_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-    response.set_header('Pragma', 'no-cache')
-    response.set_header('Expires', '0')
-    return static_file('index.html', root=str(BASE_DIR))
+    res = static_file('index.html', root=str(BASE_DIR))
+    res.set_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+    res.set_header('Pragma', 'no-cache')
+    res.set_header('Expires', '0')
+    return res
 
 @app.route('/static/<filename:path>', method='GET')
 def serve_static(filename):
