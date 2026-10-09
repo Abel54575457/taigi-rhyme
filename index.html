@@ -177,16 +177,22 @@
             <div class="flex items-center gap-2">
               <span class="text-xs text-slate-400">載入範例：</span>
               <select id="sample-selector" onchange="loadSampleLyrics(this.value)" class="text-xs bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-slate-700 focus:outline-none focus:ring-1 focus:ring-taigi-500">
-                <option value="empty">-- 自由創作 (空白) --</option>
-                <option value="stanza_green">🟢 周定邦格律：舒聲 1、5最好（完全合律・綠燈）</option>
-                <option value="stanza_stop4848">🟢 周定邦格律：入聲 4 8 4 8（入聲專門・綠燈）</option>
-                <option value="stanza_yellow">🟡 周定邦格律：寬容合格 7/8聲（唱腔順音・黃燈）</option>
-                <option value="stanza_red">🔴 周定邦格律：禁用降調 2/3/4聲（唱腔下墜・紅燈）</option>
-                <option value="stanza_red_rhyme">🔴 核心失韻（韻腹不合・紅燈）</option>
-                <option value="bangkshunhong">望春風四句聯 (OPEN_E韻)</option>
-                <option value="kiahau">江蕙《家後》精選 (OPEN_E/I韻)</option>
-                <option value="longtshuhitau">茄子蛋《浪子回頭》精選 (OPEN_A/AN韻)</option>
-                <option value="amauêue">蕭煌奇《阿嬤的話》精選 (OPEN_I韻)</option>
+                <option value="empty" selected>-- 自由創作 (空白) --</option>
+                <optgroup id="sample-group-kua" label="📖 歌仔冊參考寶庫">
+                  <option value="kua_cai_excerpt">《最新十二碗菜歌》（精選前四葩・飲食風俗）</option>
+                  <option value="kua_suat_moi">《雪梅思君七字調》（全本 4 葩・思念情感）</option>
+                  <option value="kua_khuan_se">《勸世歌・人生浮浪》（全本 4 葩・勸世醒世）</option>
+                  <option value="kua_tsiu_sing">《周成過台灣・渡海別妻》（全本 4 葩・離別悲歡）</option>
+                  <option value="kua_sio_po">《傳統男女相褒四句聯》（全本 4 葩・男女相褒）</option>
+                  <option value="kua_un_ho">《台南運河殉情記七字調》（全本 3 葩・人生歲月）</option>
+                </optgroup>
+                <optgroup label="🎯 周定邦老師格律示範">
+                  <option value="stanza_green">🟢 舒聲 1、5最好（完全合律・綠燈）</option>
+                  <option value="stanza_stop4848">🟢 入聲 4 8 4 8（入聲專門・綠燈）</option>
+                  <option value="stanza_yellow">🟡 寬容合格 7/8聲（唱腔順音・黃燈）</option>
+                  <option value="stanza_red">🔴 禁用降調 2/3/4聲（唱腔下墜・紅燈）</option>
+                  <option value="stanza_red_rhyme">🔴 核心失韻（韻腹不合・紅燈）</option>
+                </optgroup>
               </select>
             </div>
           </div>
@@ -650,6 +656,9 @@
               <button onclick="copyFullKuaContent()" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-medium transition flex items-center gap-1.5">
                 <i class="fa-regular fa-copy"></i> 複製全文
               </button>
+              <button onclick="loadCurrentKuaToStudio()" class="px-3 py-1.5 rounded-lg bg-taigi-600 hover:bg-taigi-500 text-white text-xs font-medium transition flex items-center gap-1.5 shadow-sm">
+                <i class="fa-solid fa-feather-pointed"></i> 載入至寫歌工作台
+              </button>
               <button onclick="deleteCurrentKuaDoc()" id="btn-delete-kua" class="px-3 py-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-600 text-xs font-medium transition flex items-center gap-1.5">
                 <i class="fa-regular fa-trash-can"></i> 刪除此篇
               </button>
@@ -820,59 +829,160 @@
 
   <!-- 應用程式核心 JavaScript -->
   <script>
-    // 預設經典範例歌詞
+    // 預設經典範例歌詞（改為歌仔冊參考寶庫唱本與周定邦格律）
     const SAMPLES = {
+      // 歌仔冊參考寶庫精選範例
+      kua_cai_excerpt: `[歌仔冊・最新十二碗菜歌（精選前四葩）]
+一塊圓桌排出去
+各位酒杯佮牙箸
+全桌拼盤佮燒豬
+欲請人客佮紳士
+
+頭菜就是冬粉湯
+各位客官聽端詳
+豬肚豬腸伴生腸
+大人囡仔好名聲
+
+二菜就是清蒸魚
+蔥薑蒜頭煮作堆
+魚肉軟軟芳味四
+大家歡喜食無剩
+
+三菜炒麵佮米粉
+落油落醬滿盤芬
+長命百歲有神聖
+福壽雙全謝天恩`,
+
+      kua_suat_moi: `[歌仔冊・雪梅思君七字調（全本4葩）]
+正月算來迎春風
+二人相愛在花房
+天生姻緣成雙對
+美滿恩愛久長長
+
+二月春風透樹梢
+相伴遊賞好良宵
+雙手牽妹心歡喜
+不驚風雨不驚搖
+
+三月草青柳葉垂
+清明時節雨微微
+牽君雙手遊花市
+富貴榮華永同隨
+
+四月清和天氣炎
+二人同心意相同
+世間美景千般好
+恩愛夫妻世世牽`,
+
+      kua_khuan_se: `[歌仔冊・勸世歌・人生浮浪（全本4葩）]
+我來唸歌囉各位聽
+無欲借錢免著驚
+勸人做好莫做歹
+好歹到頭天知影
+
+世間若欲做大人
+不可欺負散赤人
+天地神明看尚重
+好心必定得安康
+
+為人處事著端正
+不可放蕩作歹囝
+孝順父母尊長命
+千秋萬世好名聲
+
+富貴貧窮天註定
+勤儉持家度生活
+做人老實心安定
+神明保庇百事平`,
+
+      kua_tsiu_sing: `[歌仔冊・周成過台灣・渡海別妻（全本4葩）]
+離鄉背井過台灣
+茫茫黑水難過關
+夫妻恩愛今分離
+何時回鄉見容顏
+
+交代妻子顧家門
+養育兒女照理倫
+早晚拜佛求安穩
+等待丈夫載玉還
+
+海浪滔滔萬重波
+異鄉打拼艱苦多
+只要心中有牽掛
+天涯海角不驚磨
+
+一帆風順過台灣
+府城商賈做成行
+早日成功歸故里
+一家團圓樂心房`,
+
+      kua_sio_po: `[歌仔冊・傳統男女相褒四句聯（全本4葩）]
+手提甘蔗入花園
+看見甘蔗青又純
+阿妹生做水如花
+何時與哥訂乾坤
+
+阿哥借問免多言
+阮家門戶自安然
+若欲結緣成雙配
+先提禮金過門檻
+
+甘蔗雙頭甜如蜜
+對妹真心沒虛假
+天地日月為作證
+生生世世伴妹齊
+
+聽君真情句句軟
+滿心歡喜笑微微
+雙手奉茶敬郎君
+同甘共苦不分離`,
+
+      kua_un_ho: `[歌仔冊・台南運河殉情記七字調（全本3葩）]
+運河水深流無歇
+哀怨歌聲伴秋月
+兩人立誓心同在
+不通隨風吹落葉
+
+月照運河水波光
+哀怨啼聲怨夜長
+今生難得雙人配
+來世再結好鴛鴦
+
+青春年華似流水
+緣份難求心暗淚
+但願真情動天地
+雙雙飛入月宮隨`,
+
+      // 周定邦老師格律示範
       stanza_green: `[周定邦老師格律 - 舒聲 1、5最好綠燈]
 天頂月娘照水池
 相逢春風吹滿枝
 夜靜風吹百花放
 一生相守到佳期`,
+
       stanza_stop4848: `[周定邦老師格律 - 入聲 4 8 4 8 專門格律綠燈]
 兄弟結拜心相接
 共同打拼真骨力
 艱苦走過費心血
 難捨難分難分別`,
+
       stanza_yellow: `[周定邦老師格律 - 寬容合格 7/8 聲黃燈]
 春風吹過小水池
 思念故鄉心酸味
 抬頭看月照四方
 何日重逢共此時`,
+
       stanza_red: `[周定邦老師格律 - 韻跤禁用降調紅燈]
 春風吹來花滿枝
 兩人作伴讀情詩
 抬頭看月照四方
 離別心酸空失意`,
+
       stanza_red_rhyme: `[四句聯 - 核心失韻紅燈]
 春天百花開滿枝
 樹頂小鳥伴相隨
 雖然離別心酸苦
-不通放阮孤單坐`,
-      bangkshunhong: `[傳統四句聯 - 望春風]
-獨夜無伴守燈下
-清風對面吹
-十七八歲未出嫁
-看著少年家`,
-      kiahau: `[江蕙 - 家後]
-有一日咱若老
-找無人聽咱講心事
-我就會陪你
-坐佇椅仔頂面
-看天頂的星
-聽你講過去
-阮將一生獻予你
-從青春行到白首`,
-      longtshuhitau: `[茄子蛋 - 浪子回頭]
-菸一支一支點
-酒一杯一杯乾
-請你予我最後一擺
-陪你行到天光
-走揣失去的愛
-這條路永遠行袂煞`,
-      amauêue: `[蕭煌奇 - 阿嬤的話]
-思念的滋味放袂離
-只有月娘知影阮心意
-想起細漢阿嬤牽我行
-溫柔的聲音猶佇耳邊`
+不通放阮孤單坐`
     };
 
     let rhymeGroupsData = {};
@@ -906,15 +1016,12 @@
       // 載入 13 大通押部設定
       await loadRhymeGroups();
 
-      // 讀取暫存歌詞或載入預設範例
-      const cachedLyrics = localStorage.getItem('taigi_draft_lyrics');
-      if (cachedLyrics && cachedLyrics.trim()) {
-        document.getElementById('lyrics-input').value = cachedLyrics;
-      } else {
-        loadSampleLyrics('amauêue');
-      }
+      // 依使用者需求：打開後填寫處預設保持空白，不要有字
+      document.getElementById('lyrics-input').value = '';
+      const sampleSelector = document.getElementById('sample-selector');
+      if (sampleSelector) sampleSelector.value = 'empty';
 
-      // 執行首次歌詞分析
+      // 執行首次歌詞分析（空白初始狀態）
       onLyricsChange();
       
       // 預載辭典詞彙
@@ -923,6 +1030,9 @@
       // 預載歌仔冊主題與第一頁清單
       loadKuaThemes();
       loadKuaDocList(0);
+
+      // 動態同步歌仔冊參考寶庫至「載入範例」下拉選單
+      refreshSampleSelectorKuaDocs();
     });
 
     // 頁籤切換
@@ -985,18 +1095,118 @@
       }
     }
 
-    // 載入範例歌詞
-    function loadSampleLyrics(key) {
+    // 載入範例歌詞（支援歌仔冊參考寶庫與周定邦格律測試）
+    async function loadSampleLyrics(key) {
+      if (!key || key === 'empty') {
+        document.getElementById('lyrics-input').value = '';
+        onLyricsChange();
+        return;
+      }
+
+      // 1. 若為靜態預載歌仔冊唱本或格律示範
       if (SAMPLES[key]) {
         document.getElementById('lyrics-input').value = SAMPLES[key];
         onLyricsChange();
+        return;
+      }
+
+      // 2. 若為動態歌仔冊庫 (格式: kua_doc_{id})
+      if (key.startsWith('kua_doc_')) {
+        const docId = parseInt(key.replace('kua_doc_', ''), 10);
+        try {
+          const res = await fetch(`/api/kua_a_tsheh/${docId}`);
+          if (!res.ok) throw new Error('無法取得歌仔冊內容');
+          const doc = await res.json();
+          document.getElementById('lyrics-input').value = `[歌仔冊・${doc.title}]\n` + (doc.raw_content || '');
+          onLyricsChange();
+        } catch (err) {
+          console.error('載入歌仔冊失敗:', err);
+          alert('載入歌仔冊資料失敗，請稍後再試。');
+        }
       }
     }
 
     function clearLyrics() {
       if (confirm('確定要清空歌詞編輯器內容嗎？')) {
         document.getElementById('lyrics-input').value = '';
+        const sel = document.getElementById('sample-selector');
+        if (sel) sel.value = 'empty';
         onLyricsChange();
+      }
+    }
+
+    // 從歌仔冊閱讀器直接載入至寫歌工作台
+    function loadCurrentKuaToStudio() {
+      if (!currentKuaDocData || !currentKuaDocData.raw_content) {
+        alert('請先在左側選取一篇歌仔冊！');
+        return;
+      }
+      const title = currentKuaDocData.title || '歌仔冊';
+      document.getElementById('lyrics-input').value = `[歌仔冊・${title}]\n` + currentKuaDocData.raw_content;
+      
+      const selector = document.getElementById('sample-selector');
+      if (selector) {
+        const targetVal = `kua_doc_${currentKuaDocData.id}`;
+        if (selector.querySelector(`option[value="${targetVal}"]`)) {
+          selector.value = targetVal;
+        } else {
+          selector.value = 'empty';
+        }
+      }
+      switchTab('studio');
+      onLyricsChange();
+    }
+
+    // 動態同步歌仔冊參考寶庫至「載入範例」下拉選單
+    async function refreshSampleSelectorKuaDocs() {
+      try {
+        const res = await fetch('/api/kua_a_tsheh?limit=100');
+        if (!res.ok) return;
+        const data = await res.json();
+        const group = document.getElementById('sample-group-kua');
+        if (!group || !data.docs) return;
+
+        group.innerHTML = '';
+
+        // 優先置頂：最新十二碗菜歌（精選前四葩與全本）
+        const caiDoc = data.docs.find(d => d.title && d.title.includes('十二碗菜'));
+        if (caiDoc) {
+          const optExc = document.createElement('option');
+          optExc.value = 'kua_cai_excerpt';
+          optExc.textContent = `《${caiDoc.title}》（精選前四葩・飲食風俗）`;
+          group.appendChild(optExc);
+
+          const optFull = document.createElement('option');
+          optFull.value = `kua_doc_${caiDoc.id}`;
+          optFull.textContent = `《${caiDoc.title}》（全本 56 葩・許嘉勇校訂）`;
+          group.appendChild(optFull);
+        }
+
+        // 加入文庫其他歌仔冊篇章
+        data.docs.forEach(doc => {
+          if (caiDoc && doc.id === caiDoc.id) return;
+          const opt = document.createElement('option');
+          // 檢查 SAMPLES 是否已有靜態全文版本
+          if (doc.title && doc.title.includes('雪梅思君')) {
+            opt.value = 'kua_suat_moi';
+          } else if (doc.title && doc.title.includes('勸世歌')) {
+            opt.value = 'kua_khuan_se';
+          } else if (doc.title && doc.title.includes('周成過台灣')) {
+            opt.value = 'kua_tsiu_sing';
+          } else if (doc.title && doc.title.includes('男女相褒')) {
+            opt.value = 'kua_sio_po';
+          } else if (doc.title && doc.title.includes('台南運河')) {
+            opt.value = 'kua_un_ho';
+          } else {
+            opt.value = `kua_doc_${doc.id}`;
+          }
+          const themeTxt = doc.theme ? `・${doc.theme}` : '';
+          const stanzasTxt = doc.total_stanzas ? `・共 ${doc.total_stanzas} 葩` : '';
+          opt.textContent = `《${doc.title}》（${themeTxt.replace(/^・/, '')}${stanzasTxt}）`;
+          group.appendChild(opt);
+        });
+      } catch (err) {
+        console.error('更新範例選單歌仔冊失敗:', err);
       }
     }
 
@@ -1102,6 +1312,16 @@
 
     // 渲染統計面板
     function renderAnalysisStats(data) {
+      if (!data || data.total_lines === 0) {
+        document.getElementById('stat-rhyme-rate').textContent = `0%`;
+        document.getElementById('stat-rhyme-count').textContent = `0 / 0 行押韻`;
+        document.getElementById('stat-primary-group').textContent = `—`;
+        document.getElementById('stat-primary-desc').textContent = `尚未輸入歌詞`;
+        document.getElementById('stat-warning-count').textContent = `0 行`;
+        document.getElementById('stat-lines-count').textContent = `0 / 0`;
+        return;
+      }
+
       document.getElementById('stat-rhyme-rate').textContent = `${data.rhyme_rate}%`;
       document.getElementById('stat-rhyme-count').textContent = `${data.rhyme_lines_count} / ${data.valid_lines_count} 行押韻`;
       
@@ -1121,7 +1341,13 @@
       container.innerHTML = '';
 
       if (!lines || lines.length === 0) {
-        container.innerHTML = `<div class="text-center text-slate-400 py-12 text-sm">無內容</div>`;
+        container.innerHTML = `
+          <div class="h-full flex flex-col items-center justify-center text-slate-300 py-16">
+            <i class="fa-solid fa-feather-pointed text-4xl mb-3 text-slate-200"></i>
+            <p class="text-sm font-medium text-slate-400">填寫處目前為空白</p>
+            <p class="text-xs text-slate-400 mt-1">請在左側輸入台語歌詞，或由右上角「載入範例」選取歌仔冊唱本</p>
+          </div>
+        `;
         return;
       }
 
@@ -2303,6 +2529,7 @@
           currentKuaDocData = null;
           loadKuaThemes();
           loadKuaDocList(0);
+          refreshSampleSelectorKuaDocs();
         } else {
           alert(`刪除失敗: ${data.message || '未知錯誤'}`);
         }
@@ -2391,6 +2618,7 @@
           kuaThemesLoaded = false;
           await loadKuaThemes();
           await loadKuaDocList(0);
+          refreshSampleSelectorKuaDocs();
           selectKuaDoc(data.doc.id);
         } else {
           alert(`匯入失敗: ${data.message || '格式有誤'}`);
