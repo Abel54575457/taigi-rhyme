@@ -862,7 +862,7 @@ class RhymeService:
             })
         return results
 
-    def analyze_single_line(self, line: str, line_no: int = 1) -> Dict[str, Any]:
+    def analyze_single_line(self, line: str, line_no: int = 1, target_rhyme_group: Optional[str] = None) -> Dict[str, Any]:
         """
         分析單行歌詞尾字的韻母與韻部
         """
@@ -911,7 +911,11 @@ class RhymeService:
             two_word_matches = self.lookup_word(last_two) if last_two else []
             
             if two_word_matches and two_word_matches[0]["rhyme_group"]:
-                m = two_word_matches[0]
+                if target_rhyme_group:
+                    m_cands = [w for w in two_word_matches if w.get("rhyme_group") == target_rhyme_group]
+                    m = m_cands[0] if m_cands else two_word_matches[0]
+                else:
+                    m = two_word_matches[0]
                 end_word = last_two
                 tailo = m["tailo"]
                 rhyme_group = m["rhyme_group"]
@@ -922,7 +926,11 @@ class RhymeService:
                 end_word = last_char
                 char_matches = self.lookup_char(last_char)
                 if char_matches:
-                    m = char_matches[0]
+                    if target_rhyme_group:
+                        m_cands = [c for c in char_matches if c.get("rhyme_group") == target_rhyme_group]
+                        m = m_cands[0] if m_cands else char_matches[0]
+                    else:
+                        m = char_matches[0]
                     tailo = m["tailo"]
                     rhyme_group = m["rhyme_group"]
                     tone = m["tone"]
@@ -1544,6 +1552,23 @@ class RhymeService:
                 "score": 95
             })
 
+        # 計算原句要替換的末尾基底長度與詞性
+        orig_tail_len = 1
+        orig_pos = ""
+        last_char = clean_line[-1] if clean_line else ""
+        last_two = clean_line[-2:] if len(clean_line) >= 2 else ""
+
+        if len(clean_line) >= 2:
+            w_info = self.lookup_word(last_two)
+            if w_info:
+                orig_tail_len = 2
+                orig_pos = w_info[0].get("pos", "")
+        if not orig_pos and last_char:
+            c_info = self.lookup_char(last_char)
+            if c_info:
+                orig_pos = c_info[0].get("pos", "")
+        base_line = clean_line[:-orig_tail_len]
+
         # 2. 情境關聯詞比對：依據整句出現的主題關鍵字，在目標韻部中找情境詞
         detected_themes = []
         for theme, kw_list in THEMATIC_KEYWORDS.items():
@@ -1552,14 +1577,23 @@ class RhymeService:
         if not detected_themes:
             detected_themes = ["思念情感", "人生歲月"] # 預設通用抒情
 
-        # 取得目標韻部的精選詞（1~3字，以動詞、名詞、形容詞為主）
+        # 取得目標韻部的精選詞（嚴格限制 char_count == orig_tail_len，以保證字數與格律完全對齊！）
         c.execute("""
         SELECT id, hanji, tailo, pos, definition, rhyme_group, tone, char_count
         FROM words
-        WHERE rhyme_group = ? AND char_count <= 3 AND definition != ''
-        ORDER BY char_count ASC, id ASC LIMIT 250
-        """, (target_rhyme_group,))
+        WHERE rhyme_group = ? AND char_count = ? AND definition != ''
+        ORDER BY id ASC LIMIT 300
+        """, (target_rhyme_group, orig_tail_len))
         pool = c.fetchall()
+        # 若同字數候選較少，適度擴充
+        if len(pool) < 20:
+            c.execute("""
+            SELECT id, hanji, tailo, pos, definition, rhyme_group, tone, char_count
+            FROM words
+            WHERE rhyme_group = ? AND char_count <= 2 AND definition != ''
+            ORDER BY id ASC LIMIT 300
+            """, (target_rhyme_group,))
+            pool = c.fetchall()
         conn.close()
 
         theme_candidates = []
@@ -1569,11 +1603,21 @@ class RhymeService:
             pos = r["pos"]
             score = 60
             
+            # 若字數恰好等於原詞長度，大幅加分
+            if len(hanji) == orig_tail_len:
+                score += 35
+
+            # 若與原詞詞性相符，加分以確保語法通順
+            if orig_pos:
+                for main_p in ["動詞", "形容詞", "名詞", "副詞"]:
+                    if main_p in orig_pos and main_p in pos:
+                        score += 25
+            
             # 若詞義包含原句的主題關鍵字，加分
             for theme in detected_themes:
                 for kw in THEMATIC_KEYWORDS[theme]:
                     if kw in definition or kw in hanji:
-                        score += 8
+                        score += 15
                         
             # 若為動詞/形容詞/名詞加分 (歌詞尾常用)
             if any(p in pos for p in ["動詞", "形容詞", "名詞"]):
@@ -1586,16 +1630,9 @@ class RhymeService:
                 "definition": definition,
                 "rhyme_group": r["rhyme_group"],
                 "tone": r["tone"],
-                "source": "詩意情境推薦",
+                "source": "詞性與情境相符推薦",
                 "score": score
             })
-
-        # 計算原句要替換的末尾基底長度
-        orig_tail_len = 1
-        if len(clean_line) >= 2:
-            if self.lookup_word(clean_line[-2:]):
-                orig_tail_len = 2
-        base_line = clean_line[:-orig_tail_len]
 
         # 合併候選詞並標註聲調與評分加權 (周定邦老師格律)
         raw_candidates = synonym_candidates + theme_candidates
@@ -1684,20 +1721,385 @@ class RhymeService:
                     
         return unique_results
 
-    def suggest_sentence_adjustments(self, current_line: str, 
-                                     target_rhyme_group: str,
-                                     prev_line: str = "", 
-                                     next_line: str = "",
-                                     style: str = "抒情",
-                                     role_index: int = 2,
-                                     tone_filter: Optional[str] = None) -> Dict[str, Any]:
+    def _build_ai_adjustment_prompt(self, current_line: str, 
+                                    target_rhyme_group: str,
+                                    prev_line: str = "", 
+                                    next_line: str = "",
+                                    role_index: int = 2,
+                                    style: str = "抒情",
+                                    tone_filter: Optional[str] = "recommended") -> str:
+        clean_cur = current_line.strip()
+        raw_chars = re.sub(r"[^\w\u4e00-\u9fff]", "", clean_cur)
+        char_count = len(raw_chars) if raw_chars else 7
+        is_stop_rhyme = target_rhyme_group.startswith("STOP_")
+
+        role_name = "韻跤句（第2或第4句）" if role_index in (2, 4) else ("起句（第1句）" if role_index == 1 else "轉折句（第3句）")
+
+        if role_index in (2, 4):
+            if is_stop_rhyme:
+                tone_req = "依周定邦老師入聲『4 8 4 8』專門格律，本句尾字聲調必須為【第 8 聲（陽入調）】，尾音帶 -p, -t, -k, -h 塞音！"
+            else:
+                tone_req = "依周定邦老師唸歌格律『降的不用，1、5 最好』：【嚴禁使用第 2、3、4 聲降調】，尾字聲調必須為【第 1 聲（陰平）】或【第 5 聲（陽平）】（最優最圓順），或第 7、8 聲（合格）。"
+        elif role_index == 1:
+            if is_stop_rhyme:
+                tone_req = "依周定邦老師入聲『4 8 4 8』專門格律，第 1 句尾字聲調必須為【第 4 聲（陰入調）】！"
+            else:
+                tone_req = "依周定邦老師格律採自由發揮，不限制聲調與平仄，文意自然生動即可，若入同部韻視為加分。"
+        else: # 3
+            if is_stop_rhyme:
+                tone_req = "依周定邦老師入聲『4 8 4 8』專門格律，第 3 句尾字聲調必須為【第 4 聲（陰入調）】！"
+            else:
+                tone_req = "依周定邦老師格律採自由發揮，第 3 句為轉折句，不限制聲調與平仄，文意轉折深刻即可。"
+
+        grp_info = self.matcher.rhyme_groups.get(target_rhyme_group, {})
+        variants = ", ".join(grp_info.get("variants", [])[:8])
+        grp_desc = grp_info.get("description", "")
+
+        return f"""你是一位精通台灣歌仔冊、唸歌（七字調、四句聯）與台語創作的國寶級大師。
+請針對當前台語歌詞進行【文意高度契合、字數嚴格相同、音韻與聲調精確合律】的智慧改寫與換句調整：
+
+【創作情境與歌詞上下文】
+- 上一句：{prev_line or '（無）'}
+- 當前句：{current_line}
+- 下一句：{next_line or '（無）'}
+- 原句字數：恰好 {char_count} 個漢字（極重要！七字調必須保持 {char_count} 字，不可變動字數）
+- 歌詞風格/情境：{style}
+- 四句聯角色：{role_name}
+- 目標押韻部：{target_rhyme_group}（{grp_desc}，核心韻母：{variants}）
+- 聲調與格律要求：{tone_req}
+
+【必須遵守之三大鐵律】
+1. 【字數絕對一致】：所有改寫句、倒裝句、上下句建議，漢字字數【必須恰好等於 {char_count} 字】！絕不可多一字或少一字，以維持台語歌謠節奏！
+2. 【文意高度連貫】：改寫必須深度融入上下文的文字意思與生活情境（如宴席酒菜、深情相思、人生感嘆、山水風景等），語句道地自然，絕不可生硬亂拼！
+3. 【尾字押韻合格】：每句句尾字必須確實屬於 {target_rhyme_group} 部，且聲調嚴格符合上述格律要求。
+
+請直接輸出嚴格的 JSON 物件（不要包含 ```json 或額外開場白）：
+{{
+  "replacements": [
+    {{
+      "line": "完整改寫句（恰好 {char_count} 字，末字押 {target_rhyme_group} 部且符合聲調）",
+      "end_char": "末字",
+      "explanation": "文意修辭與情境契合說明"
+    }}
+  ],
+  "inversions": [
+    {{
+      "line": "道地台語倒裝/修辭重組句（恰好 {char_count} 字，末字押 {target_rhyme_group} 部且符合聲調）",
+      "end_char": "末字",
+      "type": "語序倒裝/詞性對偶",
+      "explanation": "倒裝修辭說明"
+    }}
+  ],
+  "prev_line_alts": [
+    {{
+      "line": "改寫上一句以順暢引導當前句（恰好 {char_count} 字，押 {target_rhyme_group} 部）",
+      "end_char": "末字",
+      "explanation": "上一句銜接說明"
+    }}
+  ],
+  "next_line_alts": [
+    {{
+      "line": "對偶承接下一句（恰好 {char_count} 字，押 {target_rhyme_group} 部）",
+      "end_char": "末字",
+      "explanation": "下一句承接說明"
+    }}
+  ]
+}}
+請各提供 2~4 個優質候選。"""
+
+    def _parse_and_verify_ai_adjustments(self, raw_ai: str,
+                                        current_line: str,
+                                        target_rhyme_group: str,
+                                        role_index: int = 2) -> Optional[Dict[str, Any]]:
+        clean_cur = current_line.strip()
+        raw_chars = re.sub(r"[^\w\u4e00-\u9fff]", "", clean_cur)
+        target_char_count = len(raw_chars) if raw_chars else 7
+        is_stop_rhyme = target_rhyme_group.startswith('STOP_')
+
+        if not raw_ai:
+            return None
+
+        clean_json = re.sub(r"^```(?:json)?\s*", "", raw_ai.strip())
+        clean_json = re.sub(r"\s*```$", "", clean_json)
+        start_idx = clean_json.find('{')
+        end_idx = clean_json.rfind('}')
+        if start_idx != -1 and end_idx != -1:
+            clean_json = clean_json[start_idx:end_idx+1]
+        else:
+            return None
+
+        try:
+            data = json.loads(clean_json)
+        except Exception:
+            return None
+
+        def get_tone_badge(t):
+            if role_index in (2, 4):
+                if is_stop_rhyme:
+                    if t == 8: return "🌟 最優 8調 (入聲4 8 4 8格律)", "optimal"
+                    elif t == 4: return "⚠️ 4調 (入聲韻跤宜為8調)", "warning"
+                    else: return f"❌ {t}調 (非入聲調)", "danger"
+                else:
+                    if t in (1, 5): return f"🌟 最優 {t}調 (1、5最好)", "optimal"
+                    elif t in (7, 8): return f"合格 {t}調 (實務以1/5圓順)", "acceptable"
+                    elif t in (2, 3, 4): return f"❌ 禁用 {t}調 (降調/易下墜)", "danger"
+                    else: return f"{t}調", "neutral"
+            else:
+                if is_stop_rhyme:
+                    if t == 4: return "🌟 最優 4調 (入聲4 8 4 8格律)", "optimal"
+                    else: return f"{t}調 (入聲宜為4調)", "warning"
+                else:
+                    return f"{t}調 (自由發揮)", "neutral"
+
+        replacements = []
+        for item in data.get("replacements", []):
+            ln = item.get("line", "").strip()
+            if not ln: continue
+            clean_ln_chars = re.sub(r"[^\w\u4e00-\u9fff]", "", ln)
+            an = self.analyze_single_line(ln, target_rhyme_group=target_rhyme_group)
+            
+            # 入聲與舒聲互斥檢驗
+            if is_stop_rhyme and not an.get("rhyme_group", "").startswith("STOP_"):
+                continue
+            if not is_stop_rhyme and an.get("rhyme_group", "").startswith("STOP_"):
+                continue
+
+            t = an.get("tone")
+            b_text, b_type = get_tone_badge(t)
+            char_tag = f"[{len(clean_ln_chars)}字]"
+            
+            score = 100
+            if len(clean_ln_chars) == target_char_count:
+                score += 30
+            if an.get("rhyme_group") == target_rhyme_group:
+                score += 50
+            if b_type == "optimal":
+                score += 40
+            elif b_type == "acceptable":
+                score += 20
+            elif b_type == "danger":
+                score -= 60
+                
+            replacements.append({
+                "suggested_line": ln,
+                "replaced_word": an.get("end_char", ln[-1]),
+                "tailo": an.get("end_tailo", ""),
+                "tone": t,
+                "is_recommended_tone": b_type in ("optimal", "acceptable"),
+                "tone_badge_text": b_text,
+                "tone_badge_type": b_type,
+                "char_count": len(clean_ln_chars),
+                "char_tag": char_tag,
+                "pos": "AI文意整句創作",
+                "definition": item.get("explanation", ""),
+                "reason": f"【AI依文意格律改寫・{char_tag}】{item.get('explanation', '')}（尾字「{an.get('end_char')}」押 {an.get('rhyme_group')} 韻，{b_text}）",
+                "source": "Gemini AI 智慧全句改寫 (文意相符・字數對齊)",
+                "score": score
+            })
+
+        replacements.sort(key=lambda x: x["score"], reverse=True)
+
+        # 若是韻跤句 (第2, 4句)，優先過濾降調字（2、3、4聲），只保留最優 1/5 聲或合格 7/8 聲
+        if role_index in (2, 4) and not is_stop_rhyme:
+            valid_reps = [r for r in replacements if r["tone_badge_type"] in ("optimal", "acceptable")]
+            if valid_reps:
+                replacements = valid_reps
+        elif role_index in (2, 4) and is_stop_rhyme:
+            valid_reps = [r for r in replacements if r["tone"] == 8]
+            if valid_reps:
+                replacements = valid_reps
+
+        inversions = []
+        for item in data.get("inversions", []):
+            ln = item.get("line", "").strip()
+            if not ln: continue
+            clean_ln_chars = re.sub(r"[^\w\u4e00-\u9fff]", "", ln)
+            an = self.analyze_single_line(ln, target_rhyme_group=target_rhyme_group)
+            t = an.get("tone")
+            b_text, b_type = get_tone_badge(t)
+            char_tag = f"[{len(clean_ln_chars)}字]"
+            inversions.append({
+                "type": item.get("type", "台語倒裝修辭"),
+                "line": ln,
+                "char_count": len(clean_ln_chars),
+                "char_tag": char_tag,
+                "note": f"【{char_tag}】{item.get('explanation', '')}（尾字「{an.get('end_char')}」押 {an.get('rhyme_group')}，{b_text}）"
+            })
+
+        prev_alts = []
+        for item in data.get("prev_line_alts", []):
+            ln = item.get("line", "").strip()
+            if not ln: continue
+            clean_ln_chars = re.sub(r"[^\w\u4e00-\u9fff]", "", ln)
+            an = self.analyze_single_line(ln, target_rhyme_group=target_rhyme_group)
+            char_tag = f"[{len(clean_ln_chars)}字]"
+            prev_alts.append({
+                "direction": "改上一句以呼應當前句",
+                "suggested_prev": ln,
+                "suggested_current": clean_cur,
+                "char_count": len(clean_ln_chars),
+                "char_tag": char_tag,
+                "rhyme_group": an.get("rhyme_group", target_rhyme_group),
+                "explanation": f"【{char_tag}】{item.get('explanation', '')}（通押 {an.get('rhyme_group')} 韻）"
+            })
+
+        next_alts = []
+        for item in data.get("next_line_alts", []):
+            ln = item.get("line", "").strip()
+            if not ln: continue
+            clean_ln_chars = re.sub(r"[^\w\u4e00-\u9fff]", "", ln)
+            an = self.analyze_single_line(ln, target_rhyme_group=target_rhyme_group)
+            char_tag = f"[{len(clean_ln_chars)}字]"
+            next_alts.append({
+                "line": ln,
+                "char_count": len(clean_ln_chars),
+                "char_tag": char_tag,
+                "rhyme_group": an.get("rhyme_group", target_rhyme_group),
+                "note": f"【{char_tag}】{item.get('explanation', '')}（對偶承接，押 {an.get('rhyme_group')} 韻）"
+            })
+
+        if not replacements and not inversions:
+            return None
+
+        return {
+            "word_replacements": replacements,
+            "inversions": inversions,
+            "prev_line_alternatives": prev_alts,
+            "next_line_continuations": next_alts,
+            "is_ai_generated": True
+        }
+
+    def _local_suggest_sentence_adjustments(self, current_line: str,
+                                            target_rhyme_group: str,
+                                            prev_line: str = "",
+                                            next_line: str = "",
+                                            style: str = "抒情",
+                                            role_index: int = 2,
+                                            tone_filter: Optional[str] = None) -> Dict[str, Any]:
         """
-        全方位改句、換句、前後句替換、倒裝與周定邦老師格律引導引擎
+        本地精選詞庫與歌仔冊種子句之備援換句引擎（保證字數嚴格對齊）
         """
         clean_cur = current_line.strip()
         clean_prev = prev_line.strip()
         clean_next = next_line.strip()
+        is_stop_rhyme = target_rhyme_group.startswith('STOP_')
 
+        # 1. 取得候選替換字詞
+        word_suggestions = self.suggest_rhyming_words(
+            clean_cur, target_rhyme_group,
+            role_index=role_index,
+            tone_filter=tone_filter,
+            top_k=16
+        )
+
+        # 2. 句尾字替換推薦列表 (嚴格對齊字數)
+        word_replacement_lines = []
+        for w in word_suggestions:
+            hanji = w["hanji"]
+            w_len = len(hanji)
+            # 安全對齊字數：替換掉原句末尾等長之字元
+            if len(clean_cur) >= w_len:
+                fixed_preview = clean_cur[:-w_len] + hanji
+            else:
+                fixed_preview = hanji
+            char_tag = f"[{len(fixed_preview)}字]"
+            word_replacement_lines.append({
+                "suggested_line": fixed_preview,
+                "replaced_word": hanji,
+                "tailo": w["tailo"],
+                "tone": w["tone"],
+                "is_recommended_tone": w.get("is_recommended_tone", False),
+                "tone_badge_text": w.get("tone_badge_text", ""),
+                "tone_badge_type": w.get("tone_badge_type", "neutral"),
+                "char_count": len(fixed_preview),
+                "char_tag": char_tag,
+                "pos": w["pos"],
+                "definition": w["definition"],
+                "reason": f"替換為「{hanji}」（{w['tailo']}，{w.get('tone_badge_text', '')}），押 {target_rhyme_group} 部，釋義：{w['definition'][:28]}",
+                "source": "本地精準詞庫 (字數嚴格對齊)"
+            })
+
+        # 3. 句型倒裝與修辭建議
+        inversion_suggestions = []
+        if word_suggestions:
+            top_w = word_suggestions[0]["hanji"]
+            w_len = len(top_w)
+            if len(clean_cur) >= 7:
+                # 七字調常見的 4-3 句型倒裝：後三字或前四字前置
+                p1 = clean_cur[:4]
+                p2 = clean_cur[4:-w_len] if len(clean_cur) > 4 + w_len else clean_cur[4:]
+                inv_line = f"{p2}{p1[:-w_len]}{top_w}" if len(p1) >= w_len else f"{clean_cur[:-w_len]}{top_w}"
+                if len(inv_line) == len(clean_cur):
+                    inversion_suggestions.append({
+                        "type": "台語前後短語對偶倒裝",
+                        "line": inv_line,
+                        "char_count": len(inv_line),
+                        "char_tag": f"[{len(inv_line)}字]",
+                        "note": f"將動態語句前置，自然收在同韻字「{top_w}」"
+                    })
+
+        # 4. 前後句互換
+        alternations = []
+        cur_analysis = self.analyze_single_line(clean_cur, target_rhyme_group=target_rhyme_group)
+        cur_grp = cur_analysis.get("rhyme_group")
+        if cur_grp and clean_prev:
+            prev_alts = self.suggest_rhyming_words(clean_prev, cur_grp, role_index=2, top_k=3)
+            for pa in prev_alts:
+                pa_w = pa["hanji"]
+                p_len = len(pa_w)
+                fixed_prev = clean_prev[:-p_len] + pa_w if len(clean_prev) >= p_len else pa_w
+                alternations.append({
+                    "direction": "改上一句以遷就本句",
+                    "suggested_prev": fixed_prev,
+                    "suggested_current": clean_cur,
+                    "char_count": len(fixed_prev),
+                    "char_tag": f"[{len(fixed_prev)}字]",
+                    "rhyme_group": cur_grp,
+                    "explanation": f"保留當前句「{clean_cur}」，將上一句改為「{fixed_prev}」，兩句通押 {cur_grp} 韻！"
+                })
+
+        # 5. 接續下一句 (優先由文庫種子四句聯中尋找合適句子)
+        kua_references = self.find_kua_a_tsheh_references(rhyme_group=target_rhyme_group, limit=4)
+        next_suggestions = []
+        for ref in kua_references:
+            for ln in ref.get("lines", []):
+                if ln.get("line_in_stanza") in (3, 4) and ln.get("rhyme_group") == target_rhyme_group:
+                    txt = ln.get("line_text")
+                    if txt and txt != clean_cur:
+                        next_suggestions.append({
+                            "line": txt,
+                            "char_count": len(txt),
+                            "char_tag": f"[{len(txt)}字]",
+                            "rhyme_group": target_rhyme_group,
+                            "note": f"引用歌仔冊《{ref.get('doc_title')}》承接句，通押 {target_rhyme_group} 韻"
+                        })
+                        if len(next_suggestions) >= 3:
+                            break
+            if len(next_suggestions) >= 3:
+                break
+
+        return {
+            "word_replacements": word_replacement_lines,
+            "inversions": inversion_suggestions,
+            "prev_line_alternatives": alternations,
+            "next_line_continuations": next_suggestions,
+            "is_ai_generated": False
+        }
+
+    async def suggest_sentence_adjustments_async(self, current_line: str,
+                                                 target_rhyme_group: str,
+                                                 prev_line: str = "",
+                                                 next_line: str = "",
+                                                 style: str = "抒情",
+                                                 role_index: int = 2,
+                                                 tone_filter: Optional[str] = None,
+                                                 api_key: Optional[str] = None) -> Dict[str, Any]:
+        """
+        全方位改句、換句、前後句替換、倒裝與周定邦老師格律引導引擎 (異步 AI 優先)
+        """
+        clean_cur = current_line.strip()
+        clean_prev = prev_line.strip()
+        clean_next = next_line.strip()
         is_stop_rhyme = target_rhyme_group.startswith('STOP_')
 
         # 聲調指導與角色資訊 (周定邦老師格律)
@@ -1748,104 +2150,109 @@ class RhymeService:
                 "title": "自由發揮句",
                 "tip": "不限制平仄與聲調。"
             }
-        
-        # 1. 取得候選替換字詞 (含聲調優先加權與篩選)
-        word_suggestions = self.suggest_rhyming_words(
-            clean_cur, target_rhyme_group,
-            role_index=role_index,
-            tone_filter=tone_filter,
-            top_k=16
-        )
-        
-        # 2. 句尾字替換推薦列表
-        word_replacement_lines = []
-        for w in word_suggestions:
-            word_replacement_lines.append({
-                "suggested_line": w["preview_line"],
-                "replaced_word": w["hanji"],
-                "tailo": w["tailo"],
-                "tone": w["tone"],
-                "is_recommended_tone": w.get("is_recommended_tone", False),
-                "tone_badge_text": w.get("tone_badge_text", ""),
-                "tone_badge_type": w.get("tone_badge_type", "neutral"),
-                "pos": w["pos"],
-                "definition": w["definition"],
-                "reason": f"替換為「{w['hanji']}」（{w['tailo']}，{w.get('tone_badge_text', '')}），押 {target_rhyme_group} 部，釋義：{w['definition'][:28]}"
-            })
 
-        # 3. 句型倒裝／調整詞序建議 (Sentence Inversion)
-        inversion_suggestions = []
-        if word_suggestions:
-            w1 = word_suggestions[0]["hanji"]
-            w2 = word_suggestions[1]["hanji"] if len(word_suggestions) > 1 else w1
-            
-            inversion_suggestions.append({
-                "type": "句末加襯收韻",
-                "line": f"{clean_cur}，{w1}",
-                "note": f"在句末加重抒情語氣，自然收在押韻詞「{w1}」"
-            })
-            
-            if "心" in clean_cur or "你" in clean_cur or "我" in clean_cur:
-                inversion_suggestions.append({
-                    "type": "焦點前置倒裝",
-                    "line": f"佇我心肝內，永遠只有{w1}",
-                    "note": f"將情感焦點前置，結尾落入韻腳「{w1}」"
-                })
-
-        # 4. 前後句互換／改換上一句或下一句 (Context Alternation)
-        alternations = []
-        cur_analysis = self.analyze_single_line(clean_cur)
-        cur_grp = cur_analysis.get("rhyme_group")
-        if cur_grp and clean_prev:
-            prev_alts = self.suggest_rhyming_words(clean_prev, cur_grp, role_index=2, top_k=3)
-            for pa in prev_alts:
-                alternations.append({
-                    "direction": "改上一句以遷就本句",
-                    "suggested_prev": pa["preview_line"],
-                    "suggested_current": clean_cur,
-                    "rhyme_group": cur_grp,
-                    "explanation": f"保留當前句「{clean_cur}」，將上一句改為「{pa['preview_line']}」，兩句通押 {cur_grp} 韻！"
-                })
-
-        # 5. 接續下一句
-        w_list = [w["hanji"] for w in word_suggestions]
-        w_a = w_list[0] if len(w_list) > 0 else "一場夢"
-        w_b = w_list[1] if len(w_list) > 1 else "流連"
-        w_c = w_list[2] if len(w_list) > 2 else "路程"
-        
-        next_line_templates = [
-            (f"無疑如今煞變作，{w_a}", f"承接前句轉折，押 {target_rhyme_group} 韻"),
-            (f"夜夜為你來掛心，{w_b}", f"深化思念意境，押 {target_rhyme_group} 韻"),
-            (f"行過坎坷的人生，{w_c}", f"開拓滄桑格局，押 {target_rhyme_group} 韻")
-        ]
-        next_suggestions = []
-        for tmpl, note in next_line_templates:
-            next_suggestions.append({
-                "line": tmpl,
-                "rhyme_group": target_rhyme_group,
-                "note": note
-            })
-
-        # 6. 歌仔冊同韻同主題經典四句聯借鑑
         kua_references = self.find_kua_a_tsheh_references(
             rhyme_group=target_rhyme_group,
             limit=4
         )
 
-        return {
+        active_key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        result_data = None
+
+        # 優先嘗試 Gemini AI 智慧全句改寫與換句
+        if active_key:
+            try:
+                ai_prompt = self._build_ai_adjustment_prompt(
+                    current_line=clean_cur,
+                    target_rhyme_group=target_rhyme_group,
+                    prev_line=clean_prev,
+                    next_line=clean_next,
+                    role_index=role_index,
+                    style=style,
+                    tone_filter=tone_filter
+                )
+                raw_ai = await self.call_gemini_ai(ai_prompt, api_key=active_key, response_json=True)
+                if raw_ai and not raw_ai.startswith("Gemini 呼叫失敗"):
+                    result_data = self._parse_and_verify_ai_adjustments(
+                        raw_ai, current_line=clean_cur,
+                        target_rhyme_group=target_rhyme_group,
+                        role_index=role_index
+                    )
+            except Exception as e:
+                result_data = None
+
+        # 若 AI 未啟用或失敗，使用升級版之本地備援引擎
+        if not result_data or not result_data.get("word_replacements"):
+            result_data = self._local_suggest_sentence_adjustments(
+                current_line=clean_cur,
+                target_rhyme_group=target_rhyme_group,
+                prev_line=clean_prev,
+                next_line=clean_next,
+                style=style,
+                role_index=role_index,
+                tone_filter=tone_filter
+            )
+
+        result_data.update({
             "current_line": clean_cur,
             "target_rhyme_group": target_rhyme_group,
             "group_desc": self.matcher.rhyme_groups.get(target_rhyme_group, {}).get("description", ""),
             "tone_guide": tone_guide,
-            "word_replacements": word_replacement_lines,
-            "inversions": inversion_suggestions,
-            "prev_line_alternatives": alternations,
-            "next_line_continuations": next_suggestions,
-            "kua_a_tsheh_references": kua_references
-        }
+            "kua_a_tsheh_references": kua_references,
+            "engine": "gemini_ai" if result_data.get("is_ai_generated") else "local_lexicon"
+        })
+
+        return result_data
+
+    def suggest_sentence_adjustments(self, current_line: str, 
+                                     target_rhyme_group: str,
+                                     prev_line: str = "", 
+                                     next_line: str = "",
+                                     style: str = "抒情",
+                                     role_index: int = 2,
+                                     tone_filter: Optional[str] = None,
+                                     api_key: Optional[str] = None) -> Dict[str, Any]:
+        """
+        同步相容包裝
+        """
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop and loop.is_running():
+            # 已在運行中的 loop，使用本地備援回傳
+            res = self._local_suggest_sentence_adjustments(
+                current_line=current_line,
+                target_rhyme_group=target_rhyme_group,
+                prev_line=prev_line,
+                next_line=next_line,
+                style=style,
+                role_index=role_index,
+                tone_filter=tone_filter
+            )
+            res.update({
+                "current_line": current_line.strip(),
+                "target_rhyme_group": target_rhyme_group,
+                "group_desc": self.matcher.rhyme_groups.get(target_rhyme_group, {}).get("description", ""),
+                "kua_a_tsheh_references": self.find_kua_a_tsheh_references(rhyme_group=target_rhyme_group, limit=4),
+                "engine": "local_lexicon"
+            })
+            return res
+        else:
+            return asyncio.run(self.suggest_sentence_adjustments_async(
+                current_line=current_line,
+                target_rhyme_group=target_rhyme_group,
+                prev_line=prev_line,
+                next_line=next_line,
+                style=style,
+                role_index=role_index,
+                tone_filter=tone_filter,
+                api_key=api_key
+            ))
 
 
-    async def call_gemini_ai(self, prompt: str, api_key: Optional[str] = None) -> Optional[str]:
+    async def call_gemini_ai(self, prompt: str, api_key: Optional[str] = None, response_json: bool = False) -> Optional[str]:
         """
         呼叫 Google Gemini API 進行高階台語歌詞生成與文意潤飾
         """
@@ -1854,16 +2261,20 @@ class RhymeService:
             return "尚未設定 API Key，請先於右上角設定。"
             
         models_to_try = ["gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-flash-latest", "gemini-pro-latest"]
+        gen_config: Dict[str, Any] = {
+            "temperature": 0.7,
+            "maxOutputTokens": 1500
+        }
+        if response_json:
+            gen_config["responseMimeType"] = "application/json"
+
         payload = {
             "contents": [
                 {
                     "parts": [{"text": prompt}]
                 }
             ],
-            "generationConfig": {
-                "temperature": 0.7,
-                "maxOutputTokens": 1000
-            }
+            "generationConfig": gen_config
         }
         
         async with httpx.AsyncClient(timeout=30.0) as client:

@@ -1552,10 +1552,15 @@
       const prevText = document.getElementById('focus-prev-text').textContent;
       const nextText = document.getElementById('focus-next-text').textContent;
       const rIdx = curLine.role_index || 2;
+      const userApiKey = localStorage.getItem('taigi_gemini_api_key') || '';
 
       const guideText = (rIdx === 2 || rIdx === 4) ? '周定邦老師格律：1、5最好（嚴禁降調）' : '周定邦老師格律：自由發揮（情境契合）';
       document.getElementById('word-suggestions-list').innerHTML = `
-        <div class="text-center text-slate-400 py-12"><i class="fa-solid fa-spinner fa-spin mr-2"></i>AI 正在依【${guideText}】檢索契合文意之押韻詞庫...</div>
+        <div class="text-center text-slate-500 py-12">
+          <i class="fa-solid fa-spinner fa-spin mr-2 text-taigi-600 text-lg"></i>
+          <p class="font-bold text-sm text-slate-700 mt-2">AI 正在依【${guideText}】構思改寫建議...</p>
+          <p class="text-xs text-slate-400 mt-1">嚴格對齊原句字數、深入文意情境與音韻格律校驗</p>
+        </div>
       `;
 
       try {
@@ -1568,23 +1573,34 @@
             prev_line: prevText === '（無）' ? '' : prevText,
             next_line: nextText === '（無）' ? '' : nextText,
             role_index: rIdx,
-            tone_filter: currentToneFilter
+            tone_filter: currentToneFilter,
+            api_key: userApiKey
           })
         });
         const data = await res.json();
         renderSuggestions(data);
       } catch (err) {
         console.error('取得建議失敗:', err);
+        document.getElementById('word-suggestions-list').innerHTML = `
+          <div class="text-center text-rose-500 py-8 text-xs">取得改寫建議失敗: ${err.message}</div>
+        `;
       }
     }
 
     // 渲染 AI 換詞換句面板
     function renderSuggestions(data) {
-      // 1. 尾字換詞清單
+      // 1. 尾字換詞與整句改寫清單
       const wordList = document.getElementById('word-suggestions-list');
       wordList.innerHTML = '';
       const replacements = data.word_replacements || [];
-      document.getElementById('word-cand-count').textContent = `${replacements.length} 個建議`;
+      const engineBadge = data.engine === 'gemini_ai' 
+        ? `<span class="px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[10px] font-bold shadow-xs"><i class="fa-solid fa-sparkles mr-1"></i>Gemini AI 旗艦文意合律</span>`
+        : `<span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-medium border border-slate-200">本地精選詞庫</span>`;
+      
+      const countEl = document.getElementById('word-cand-count');
+      if (countEl) {
+        countEl.innerHTML = `<span class="flex items-center gap-1.5">${replacements.length} 個建議 ${engineBadge}</span>`;
+      }
 
       if (replacements.length === 0) {
         wordList.innerHTML = `<div class="text-center text-slate-400 py-8 text-sm">此聲調篩選下暫無相容之情境詞，可切換「全部聲調」檢視</div>`;
@@ -1611,9 +1627,12 @@
             badgeHtml = `<span class="text-[11px] px-2 py-0.5 rounded-full border ${bColor} shadow-xs">${item.tone_badge_text}</span>`;
           }
 
+          const charBadge = item.char_tag || `[${item.suggested_line.length}字]`;
+
           div.innerHTML = `
             <div class="flex items-center justify-between flex-wrap gap-2">
-              <div class="flex items-center gap-2 flex-wrap">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-xs font-mono font-bold border border-slate-200">${charBadge}</span>
                 <span class="text-lg font-serif font-bold text-slate-900">${item.replaced_word}</span>
                 <span class="text-xs font-mono text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">${item.tailo}</span>
                 ${item.pos ? `<span class="text-[11px] text-taigi-700 bg-taigi-50 px-1.5 py-0.5 rounded border border-taigi-200">${item.pos}</span>` : ''}
@@ -1624,13 +1643,13 @@
               </button>
             </div>
             
-            <div class="text-xs text-slate-700 bg-white p-2 rounded-lg border border-slate-200">
-              <span class="text-slate-400">整句改寫預覽：</span>
-              <span class="font-serif font-semibold text-slate-900">${item.suggested_line}</span>
+            <div class="text-xs text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200/80 shadow-2xs">
+              <span class="text-slate-400 font-sans">整句改寫預覽：</span>
+              <span class="font-serif font-bold text-slate-900 text-sm tracking-wide">${item.suggested_line}</span>
             </div>
 
-            <div class="text-[11px] text-slate-500 leading-normal line-clamp-2">
-              <i class="fa-solid fa-book-open text-slate-400 mr-1"></i>${item.definition || '常用台語詞目'}
+            <div class="text-[11px] text-slate-600 bg-amber-50/50 p-2 rounded-lg border border-amber-100/60 leading-normal">
+              <i class="fa-solid fa-feather mr-1 text-amber-500"></i>${item.reason || item.definition || '契合歌詞情境之押韻改寫'}
             </div>
           `;
           wordList.appendChild(div);
@@ -1647,15 +1666,19 @@
         prevAlts.forEach(alt => {
           const div = document.createElement('div');
           div.className = "p-2.5 rounded-xl border border-blue-100 bg-blue-50/40 text-xs space-y-1.5";
+          const pBadge = alt.char_tag || `[${alt.suggested_prev.length}字]`;
           div.innerHTML = `
             <div class="flex justify-between items-center">
-              <span class="font-medium text-blue-900">${alt.direction}</span>
+              <div class="flex items-center gap-1.5">
+                <span class="px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 text-[10px] font-mono font-bold">${pBadge}</span>
+                <span class="font-medium text-blue-900">${alt.direction}</span>
+              </div>
               <button onclick="applyPrevLineSwap('${escapeQuote(alt.suggested_prev)}')" class="px-2 py-0.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-[11px] font-medium transition">
                 套用上句改寫
               </button>
             </div>
-            <div class="font-serif text-slate-800">
-              改寫上句：<b class="text-blue-700">${alt.suggested_prev}</b>
+            <div class="font-serif text-slate-800 text-sm">
+              改寫上句：<b class="text-blue-700 font-bold">${alt.suggested_prev}</b>
             </div>
             <div class="text-[11px] text-slate-500">${alt.explanation}</div>
           `;
@@ -1673,10 +1696,14 @@
         inversions.forEach(inv => {
           const div = document.createElement('div');
           div.className = "p-2.5 rounded-xl border border-purple-100 bg-purple-50/40 text-xs flex justify-between items-center gap-2";
+          const iBadge = inv.char_tag || `[${inv.line.length}字]`;
           div.innerHTML = `
             <div>
-              <div class="font-serif text-sm font-bold text-slate-900">${inv.line}</div>
-              <div class="text-[11px] text-purple-700">${inv.type}：${inv.note}</div>
+              <div class="flex items-center gap-1.5">
+                <span class="px-1.5 py-0.2 rounded bg-purple-100 text-purple-800 text-[10px] font-mono font-bold">${iBadge}</span>
+                <span class="font-serif text-sm font-bold text-slate-900">${inv.line}</span>
+              </div>
+              <div class="text-[11px] text-purple-700 mt-1">${inv.type}：${inv.note}</div>
             </div>
             <button onclick="applySuggestedLine('${escapeQuote(inv.line)}')" class="px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded text-[11px] font-medium transition flex-shrink-0">
               套用倒裝
@@ -1696,10 +1723,14 @@
         nextContinuations.forEach(nc => {
           const div = document.createElement('div');
           div.className = "p-2.5 rounded-xl border border-amber-100 bg-amber-50/40 text-xs flex justify-between items-center gap-2";
+          const nBadge = nc.char_tag || `[${nc.line.length}字]`;
           div.innerHTML = `
             <div>
-              <div class="font-serif text-sm font-bold text-slate-900">${nc.line}</div>
-              <div class="text-[11px] text-amber-700">${nc.note}</div>
+              <div class="flex items-center gap-1.5">
+                <span class="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[10px] font-mono font-bold">${nBadge}</span>
+                <span class="font-serif text-sm font-bold text-slate-900">${nc.line}</span>
+              </div>
+              <div class="text-[11px] text-amber-700 mt-1">${nc.note}</div>
             </div>
             <button onclick="insertNextLine('${escapeQuote(nc.line)}')" class="px-2 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[11px] font-medium transition flex-shrink-0">
               ➕ 插入下句

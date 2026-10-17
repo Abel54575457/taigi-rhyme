@@ -26,6 +26,21 @@ def json_response(data, status=200):
     response.content_type = 'application/json; charset=utf-8'
     return json.dumps(data, ensure_ascii=False)
 
+def get_request_json():
+    try:
+        j = request.json
+        if isinstance(j, dict):
+            return j
+    except Exception:
+        pass
+    try:
+        raw = request.body.read()
+        if raw:
+            return json.loads(raw.decode('utf-8'))
+    except Exception:
+        pass
+    return {}
+
 @app.hook('after_request')
 def enable_cors():
     response.headers['Access-Control-Allow-Origin'] = '*'
@@ -85,7 +100,7 @@ def suggest_api():
     if request.method == 'OPTIONS':
         return ''
     try:
-        data = request.json or {}
+        data = get_request_json()
         current_line = data.get('current_line', '')
         target_rhyme_group = data.get('target_rhyme_group', '')
         prev_line = data.get('prev_line', '')
@@ -95,21 +110,23 @@ def suggest_api():
         role_index = int(data.get('role_index', 2))
         tone_filter = data.get('tone_filter', None)
         
-        result = service.suggest_sentence_adjustments(
+        active_key = api_key or os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')
+        
+        result = asyncio.run(service.suggest_sentence_adjustments_async(
             current_line=current_line,
             target_rhyme_group=target_rhyme_group,
             prev_line=prev_line,
             next_line=next_line,
             style=style,
             role_index=role_index,
-            tone_filter=tone_filter
-        )
+            tone_filter=tone_filter,
+            api_key=active_key
+        ))
         
-        # 若有提供 API Key (無論由前端傳入或由伺服器 .env 讀取) 且有要求 AI 深度潤飾
-        active_key = api_key or os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')
+        # 若有要求額外的自由詩意生成 (例如底部的 Gemini 深度潤飾對話卡)
         if active_key and data.get('request_ai_gemini'):
             role_tone_prompt = ""
-            is_stop_rhyme = "STOP" in target_rhyme_group or target_rhyme_group in ("STOP_AT", "STOP_ET", "STOP_OK")
+            is_stop_rhyme = target_rhyme_group.startswith('STOP_')
             if role_index in (2, 4):
                 if is_stop_rhyme:
                     role_tone_prompt = "- 音律角色：四句聯之「韻跤句」（第2或第4句）。本段為入聲句押韻，依周定邦老師『4 8 4 8』唸歌專門格律，第2句與第4句尾字必須為「第 8 聲（陽入）」，以求鏗鏘合律。"
@@ -126,21 +143,24 @@ def suggest_api():
                 else:
                     role_tone_prompt = "- 音律角色：四句聯之「第1句（起句）」。依周定邦老師格律採「自由發揮」，不限制聲調與平仄，若有入同部韻視為加分。"
 
-            prompt = f"""你是一位精通台語流行歌與傳統歌謠的填詞專家。
-請針對這行台語歌詞提供詩意、道地且嚴格合律的改寫建議：
+            raw_chars = re.sub(r"[^\w\u4e00-\u9fff]", "", current_line.strip())
+            c_cnt = len(raw_chars) if raw_chars else 7
+            prompt = f"""你是一位精通台語流行歌與傳統唸歌的填詞專家。
+請針對這行台語歌詞提供詩意、道地且嚴格合律的深度改寫建議：
 - 前一句：{prev_line}
 - 當前句：{current_line}
 - 後一句：{next_line}
+- 原句字數：恰好 {c_cnt} 個漢字（七字調必須保持 {c_cnt} 字）
 - 目標押韻部：{target_rhyme_group} ({result.get('group_desc')})
 - 歌曲風格：{style}
 {role_tone_prompt}
 
 請提供：
-1. 3 種不同情感層次（如深刻悲切、溫柔釋懷、大器滄桑）的整句改寫，末字必須精準符合 {target_rhyme_group} 韻部與上述指定之周定邦老師格律聲調。
+1. 3 種不同情感層次（如深刻悲切、溫柔釋懷、大器滄桑）的整句改寫，每句字數嚴格恰為 {c_cnt} 字，末字精準符合 {target_rhyme_group} 韻部與指定之格律聲調。
 2. 標註改寫句的台羅拼音、聲調數字與韻腳字。
 3. 簡述文意與前後句的銜接理由。
 請用繁體中文與標準台灣教育部推薦用字回覆。"""
-            ai_text = asyncio.run(service.call_gemini_ai(prompt, api_key=api_key))
+            ai_text = asyncio.run(service.call_gemini_ai(prompt, api_key=active_key))
             result['gemini_suggestions'] = ai_text
             
         return json_response(result)
