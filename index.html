@@ -434,15 +434,56 @@
     <!-- ========================================== -->
     <div id="tab-dictionary" class="tab-content hidden space-y-6">
 
-      <!-- 13 大通押韻部快捷切換列 -->
+      <!-- 1. 主題分類雙向快選列 (22 大主題分類) -->
       <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-        <div class="text-xs font-medium text-slate-500 mb-2 flex items-center justify-between">
-          <span><i class="fa-solid fa-tags text-taigi-600 mr-1"></i>依 13 大通押部快速篩選：</span>
+        <div class="text-xs font-medium text-slate-700 mb-2.5 flex items-center justify-between">
+          <span class="flex items-center gap-1.5 font-bold text-slate-800">
+            <i class="fa-solid fa-shapes text-amber-500"></i>
+            主題分類雙向快選（22 大領域・先選類別再挑韻腳）：
+          </span>
+          <span class="text-slate-400 text-xs hidden sm:inline">可直接點選 天氣、植物、動物、菜餚、魚類、昆蟲、心情 等</span>
+        </div>
+        <div class="flex flex-wrap gap-1.5" id="dict-category-tags">
+          <!-- 動態生成主題分類按鈕 (帶圖示與即時詞數徽章) -->
+        </div>
+      </div>
+
+      <!-- 2. 13 大通押韻部快捷切換列 (通押) -->
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="text-xs font-medium text-slate-700 mb-2 flex items-center justify-between">
+          <span class="flex items-center gap-1.5 font-bold text-slate-800">
+            <i class="fa-solid fa-music text-taigi-600"></i>
+            依 13 大通押部篩選（通押・先選韻部再挑類別）：
+          </span>
           <span class="text-slate-400 text-xs">教育部常用詞辭典 28,695 條收錄</span>
         </div>
         <div class="flex flex-wrap gap-1.5" id="dict-rhyme-tags">
-          <!-- 動態生成 13 部標籤按鈕 -->
+          <!-- 動態生成 13 部標籤按鈕 (帶即時詞數徽章) -->
         </div>
+      </div>
+
+      <!-- 3. 精確韻腳 / 子韻母挑選列 (嚴押) -->
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="text-xs font-medium text-slate-700 mb-2 flex items-center justify-between">
+          <span class="flex items-center gap-1.5 font-bold text-slate-800">
+            <i class="fa-solid fa-spell-check text-indigo-600"></i>
+            精確韻腳／子韻母（嚴押・如 ann 韻、a 韻、ang 韻、ong 韻、i 韻）：
+          </span>
+          <span class="text-slate-400 text-xs">點選精確韻腳鎖定末字韻母</span>
+        </div>
+        <div class="flex flex-wrap gap-1.5" id="dict-subrhyme-tags">
+          <!-- 動態生成子韻母標籤按鈕 (帶即時詞數徽章) -->
+        </div>
+      </div>
+
+      <!-- 4. 當前雙向篩選提示與重置列 -->
+      <div id="dict-active-filter-bar" class="hidden bg-taigi-50 border border-taigi-200 px-4 py-2.5 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div class="flex items-center gap-2 flex-wrap" id="dict-active-filter-chips">
+          <!-- 動態顯示已選條件 Chips -->
+        </div>
+        <button onclick="resetAllDictFilters()" class="text-taigi-700 hover:text-taigi-900 font-medium underline flex items-center gap-1">
+          <i class="fa-solid fa-rotate-left"></i> 重置所有篩選
+        </button>
       </div>
 
       <!-- 複合條件篩選工具列 -->
@@ -954,7 +995,17 @@
     let currentDictOffset = 0;
     const dictLimit = 36;
     let selectedRhymeGroupFilter = "";
+    let selectedCategoryFilter = "";
+    let selectedSubRhymeFilter = "";
     let currentToneFilter = "recommended"; // 預設：只看最佳推薦聲調
+
+    const DICT_CATEGORY_ICONS = {
+      "天氣": "⛅", "植物": "🌸", "動物": "🐾", "菜餚": "🍲", "魚類": "🐟",
+      "昆蟲": "🦋", "心情": "💖", "飲食": "🍵", "地理": "🏔️", "天文": "✨",
+      "人生": "⏳", "身體": "💪", "器物": "🏡", "服飾": "👘", "建築": "🏛️",
+      "社會": "👥", "民俗": "🏮", "文藝": "📜", "動作": "🏃", "狀態": "🎨",
+      "言語": "💬", "時空": "🌌", "其他": "📦"
+    };
 
     // 歌仔冊文庫狀態變數
     let currentKuaDocId = null;
@@ -986,7 +1037,8 @@
       // 執行首次歌詞分析（空白初始狀態）
       onLyricsChange();
       
-      // 預載辭典詞彙
+      // 預載辭典詞彙與 Facets 統計
+      fetchDictionaryFacets();
       loadDictionaryWords(0);
 
       // 預載歌仔冊主題與第一頁清單
@@ -1011,7 +1063,7 @@
       activeBtn.classList.add('border-taigi-400', 'text-taigi-300');
 
       if (tabId === 'dictionary' && Object.keys(rhymeGroupsData).length > 0) {
-        renderDictRhymeTags();
+        fetchDictionaryFacets();
       }
 
       if (tabId === 'corpus') {
@@ -1051,7 +1103,7 @@
         }
 
         renderGuideGrid();
-        renderDictRhymeTags();
+        fetchDictionaryFacets();
       } catch (err) {
         console.error('載入韻部資料失敗:', err);
       }
@@ -1915,29 +1967,212 @@
     }
 
     // ==========================================
-    // 辭典反查功能 (Dictionary Functions)
+    // 辭典反查與雙向聯動功能 (Dictionary Functions)
     // ==========================================
-    function renderDictRhymeTags() {
-      const container = document.getElementById('dict-rhyme-tags');
-      container.innerHTML = '';
 
-      // 全部標籤
-      const allBtn = document.createElement('button');
-      allBtn.className = `px-2.5 py-1 rounded-lg text-xs font-medium border transition ${selectedRhymeGroupFilter === '' ? 'bg-taigi-600 text-white border-taigi-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`;
-      allBtn.textContent = '全部韻部';
-      allBtn.onclick = () => { selectedRhymeGroupFilter = ''; renderDictRhymeTags(); loadDictionaryWords(0); };
-      container.appendChild(allBtn);
+    // 取得雙向統計數據 (Facets) 並渲染標籤
+    async function fetchDictionaryFacets() {
+      try {
+        const params = new URLSearchParams();
+        if (selectedCategoryFilter) params.append('category', selectedCategoryFilter);
+        if (selectedRhymeGroupFilter) params.append('rhyme_group', selectedRhymeGroupFilter);
+        if (selectedSubRhymeFilter) params.append('rhyme', selectedSubRhymeFilter);
 
-      for (const [gid, info] of Object.entries(rhymeGroupsData)) {
-        const btn = document.createElement('button');
-        const isSelected = selectedRhymeGroupFilter === gid;
-        btn.className = `px-2.5 py-1 rounded-lg text-xs font-medium border transition ${isSelected ? 'bg-taigi-600 text-white border-taigi-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`;
-        btn.textContent = `${gid} (${info.variants.slice(0, 3).join(',')}...)`;
-        btn.onclick = () => { selectedRhymeGroupFilter = gid; renderDictRhymeTags(); loadDictionaryWords(0); };
-        container.appendChild(btn);
+        const res = await fetch(`/api/categories?${params.toString()}`);
+        const data = await res.json();
+        
+        renderDictCategoryTags(data.categories || []);
+        renderDictRhymeTagsWithFacets(data.rhyme_groups || []);
+        renderDictSubRhymeTags(data.sub_rhymes || []);
+        renderActiveFilterChips();
+      } catch (err) {
+        console.error('載入辭典 Facets 失敗:', err);
       }
     }
 
+    // 渲染主題分類標籤
+    function renderDictCategoryTags(categories) {
+      const container = document.getElementById('dict-category-tags');
+      if (!container) return;
+      container.innerHTML = '';
+
+      // 全部類別按鈕
+      const allBtn = document.createElement('button');
+      const isAll = !selectedCategoryFilter;
+      allBtn.className = `px-2.5 py-1 rounded-lg text-xs font-medium border transition ${isAll ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`;
+      allBtn.innerHTML = `<span>全部類別</span>`;
+      allBtn.onclick = () => toggleCategoryFilter('');
+      container.appendChild(allBtn);
+
+      categories.forEach(cat => {
+        const btn = document.createElement('button');
+        const isSelected = selectedCategoryFilter === cat.name;
+        const icon = cat.icon || DICT_CATEGORY_ICONS[cat.name] || '🏷️';
+        const countText = cat.count !== undefined ? cat.count : 0;
+        
+        let styleClass = '';
+        if (isSelected) {
+          styleClass = 'bg-amber-600 text-white border-amber-600 shadow-sm font-semibold';
+        } else if (countText === 0 && (selectedRhymeGroupFilter || selectedSubRhymeFilter)) {
+          styleClass = 'bg-slate-50 text-slate-400 border-slate-100 opacity-60 hover:opacity-100';
+        } else {
+          styleClass = 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-amber-50 hover:border-amber-300';
+        }
+
+        btn.className = `px-2.5 py-1 rounded-lg text-xs font-medium border transition flex items-center gap-1 ${styleClass}`;
+        btn.innerHTML = `<span>${icon} ${cat.name}</span><span class="text-[10px] px-1 rounded ${isSelected ? 'bg-amber-700 text-white' : 'bg-slate-200 text-slate-600'}">${countText}</span>`;
+        btn.onclick = () => toggleCategoryFilter(cat.name);
+        container.appendChild(btn);
+      });
+    }
+
+    // 渲染 13 大通押部標籤 (帶即時詞數徽章)
+    function renderDictRhymeTagsWithFacets(rhymeGroups) {
+      const container = document.getElementById('dict-rhyme-tags');
+      if (!container) return;
+      container.innerHTML = '';
+
+      // 全部韻部按鈕
+      const allBtn = document.createElement('button');
+      const isAll = !selectedRhymeGroupFilter;
+      allBtn.className = `px-2.5 py-1 rounded-lg text-xs font-medium border transition ${isAll ? 'bg-taigi-600 text-white border-taigi-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`;
+      allBtn.textContent = '全部韻部';
+      allBtn.onclick = () => toggleRhymeGroupFilter('');
+      container.appendChild(allBtn);
+
+      rhymeGroups.forEach(rg => {
+        const btn = document.createElement('button');
+        const isSelected = selectedRhymeGroupFilter === rg.group_id;
+        const variants = (rg.variants || []).slice(0, 3).join(',');
+        const countText = rg.count !== undefined ? rg.count : 0;
+
+        let styleClass = '';
+        if (isSelected) {
+          styleClass = 'bg-taigi-600 text-white border-taigi-600 shadow-sm font-semibold';
+        } else if (countText === 0 && selectedCategoryFilter) {
+          styleClass = 'bg-slate-50 text-slate-400 border-slate-100 opacity-60 hover:opacity-100';
+        } else {
+          styleClass = 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-taigi-50 hover:border-taigi-300';
+        }
+
+        btn.className = `px-2.5 py-1 rounded-lg text-xs font-medium border transition flex items-center gap-1 ${styleClass}`;
+        btn.innerHTML = `<span>${rg.group_id}</span><span class="text-slate-400 text-[10px] hidden md:inline">(${variants})</span><span class="text-[10px] px-1 rounded ${isSelected ? 'bg-taigi-700 text-white' : 'bg-slate-200 text-slate-600'}">${countText}</span>`;
+        btn.onclick = () => toggleRhymeGroupFilter(rg.group_id);
+        container.appendChild(btn);
+      });
+    }
+
+    // 渲染精確韻腳 / 子韻母標籤 (帶即時詞數徽章)
+    function renderDictSubRhymeTags(subRhymes) {
+      const container = document.getElementById('dict-subrhyme-tags');
+      if (!container) return;
+      container.innerHTML = '';
+
+      // 全部子韻腳按鈕
+      const allBtn = document.createElement('button');
+      const isAll = !selectedSubRhymeFilter;
+      allBtn.className = `px-2.5 py-1 rounded-lg text-xs font-medium border transition ${isAll ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`;
+      allBtn.textContent = '全部子韻腳';
+      allBtn.onclick = () => toggleSubRhymeFilter('');
+      container.appendChild(allBtn);
+
+      subRhymes.forEach(rh => {
+        const btn = document.createElement('button');
+        const isSelected = selectedSubRhymeFilter === rh.rhyme;
+        const countText = rh.count !== undefined ? rh.count : 0;
+
+        let styleClass = '';
+        if (isSelected) {
+          styleClass = 'bg-indigo-600 text-white border-indigo-600 shadow-sm font-semibold';
+        } else {
+          styleClass = 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-indigo-50 hover:border-indigo-300';
+        }
+
+        btn.className = `px-2.5 py-1 rounded-lg text-xs font-medium border transition flex items-center gap-1 ${styleClass}`;
+        btn.innerHTML = `<span>${rh.rhyme} 韻</span><span class="text-[10px] px-1 rounded ${isSelected ? 'bg-indigo-700 text-white' : 'bg-slate-200 text-slate-600'}">${countText}</span>`;
+        btn.onclick = () => toggleSubRhymeFilter(rh.rhyme);
+        container.appendChild(btn);
+      });
+    }
+
+    // 渲染已套用篩選狀態列 Chips
+    function renderActiveFilterChips() {
+      const bar = document.getElementById('dict-active-filter-bar');
+      const chipsContainer = document.getElementById('dict-active-filter-chips');
+      if (!bar || !chipsContainer) return;
+
+      const hasActive = selectedCategoryFilter || selectedRhymeGroupFilter || selectedSubRhymeFilter;
+      if (!hasActive) {
+        bar.classList.add('hidden');
+        return;
+      }
+
+      bar.classList.remove('hidden');
+      chipsContainer.innerHTML = '<span class="font-bold text-taigi-900 mr-1">已套用條件：</span>';
+
+      if (selectedCategoryFilter) {
+        const icon = DICT_CATEGORY_ICONS[selectedCategoryFilter] || '🏷️';
+        const chip = document.createElement('span');
+        chip.className = 'px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-medium flex items-center gap-1 cursor-pointer';
+        chip.innerHTML = `${icon} ${selectedCategoryFilter} <i class="fa-solid fa-xmark text-[10px]"></i>`;
+        chip.onclick = () => toggleCategoryFilter('');
+        chipsContainer.appendChild(chip);
+      }
+
+      if (selectedRhymeGroupFilter) {
+        const chip = document.createElement('span');
+        chip.className = 'px-2 py-0.5 rounded-full bg-taigi-100 text-taigi-800 border border-taigi-300 font-medium flex items-center gap-1 cursor-pointer';
+        chip.innerHTML = `🎵 ${selectedRhymeGroupFilter} <i class="fa-solid fa-xmark text-[10px]"></i>`;
+        chip.onclick = () => toggleRhymeGroupFilter('');
+        chipsContainer.appendChild(chip);
+      }
+
+      if (selectedSubRhymeFilter) {
+        const chip = document.createElement('span');
+        chip.className = 'px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-300 font-medium flex items-center gap-1 cursor-pointer';
+        chip.innerHTML = `🔤 ${selectedSubRhymeFilter} 韻 <i class="fa-solid fa-xmark text-[10px]"></i>`;
+        chip.onclick = () => toggleSubRhymeFilter('');
+        chipsContainer.appendChild(chip);
+      }
+    }
+
+    // 切換分類
+    function toggleCategoryFilter(cat) {
+      selectedCategoryFilter = (selectedCategoryFilter === cat) ? '' : cat;
+      fetchDictionaryFacets();
+      loadDictionaryWords(0);
+    }
+
+    // 切換通押部
+    function toggleRhymeGroupFilter(gid) {
+      selectedRhymeGroupFilter = (selectedRhymeGroupFilter === gid) ? '' : gid;
+      // 若切換了通押部，清空子韻母
+      selectedSubRhymeFilter = '';
+      fetchDictionaryFacets();
+      loadDictionaryWords(0);
+    }
+
+    // 切換精確子韻母
+    function toggleSubRhymeFilter(rh) {
+      selectedSubRhymeFilter = (selectedSubRhymeFilter === rh) ? '' : rh;
+      fetchDictionaryFacets();
+      loadDictionaryWords(0);
+    }
+
+    // 重置所有辭典篩選
+    function resetAllDictFilters() {
+      selectedCategoryFilter = '';
+      selectedRhymeGroupFilter = '';
+      selectedSubRhymeFilter = '';
+      document.getElementById('dict-filter-chars').value = '';
+      document.getElementById('dict-filter-tone').value = '';
+      document.getElementById('dict-filter-pos').value = '';
+      document.getElementById('dict-search-keyword').value = '';
+      fetchDictionaryFacets();
+      loadDictionaryWords(0);
+    }
+
+    // 載入詞條清單
     async function loadDictionaryWords(offset = 0) {
       currentDictOffset = offset;
       const chars = document.getElementById('dict-filter-chars').value;
@@ -1949,7 +2184,9 @@
         limit: dictLimit,
         offset: currentDictOffset
       });
+      if (selectedCategoryFilter) params.append('category', selectedCategoryFilter);
       if (selectedRhymeGroupFilter) params.append('rhyme_group', selectedRhymeGroupFilter);
+      if (selectedSubRhymeFilter) params.append('rhyme', selectedSubRhymeFilter);
       if (chars) params.append('char_count', chars);
       if (tone) params.append('tone', tone);
       if (pos) params.append('pos', pos);
@@ -1977,6 +2214,7 @@
         data.words.forEach(w => {
           const card = document.createElement('div');
           const groupClass = `badge-${w.rhyme_group || 'none'}`;
+          
           let toneBadge = '';
           if (w.tone) {
             if (w.tone === 1 || w.tone === 5) {
@@ -1988,6 +2226,19 @@
             }
           }
 
+          // 子韻母標籤
+          const rhymeBadge = w.last_rhyme ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-mono font-medium">${w.last_rhyme} 韻</span>` : '';
+
+          // 分類標籤
+          let categoryBadges = '';
+          if (w.categories) {
+            const catList = w.categories.split(/[、,]/).map(c => c.trim()).filter(Boolean);
+            categoryBadges = catList.slice(0, 3).map(c => {
+              const icon = DICT_CATEGORY_ICONS[c] || '🏷️';
+              return `<span class="text-[10px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200 font-medium">${icon} ${c}</span>`;
+            }).join(' ');
+          }
+
           card.className = "bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-taigi-500 hover:shadow-md transition flex flex-col justify-between";
           card.innerHTML = `
             <div>
@@ -1997,11 +2248,19 @@
                   <div class="text-xs font-mono text-slate-500 mt-0.5">${w.tailo}</div>
                 </div>
                 <div class="flex flex-col items-end gap-1">
-                  <span class="px-2 py-0.5 rounded text-[11px] border font-medium ${groupClass}">${w.rhyme_group}</span>
+                  <div class="flex items-center gap-1">
+                    <span class="px-2 py-0.5 rounded text-[11px] border font-medium ${groupClass}">${w.rhyme_group}</span>
+                    ${rhymeBadge}
+                  </div>
                   ${toneBadge}
                 </div>
               </div>
-              ${w.pos ? `<div class="text-[11px] text-taigi-700 font-medium mt-2"><span class="px-1.5 py-0.2 rounded bg-taigi-50 border border-taigi-200">${w.pos}</span></div>` : ''}
+
+              <div class="flex flex-wrap items-center gap-1.5 mt-2">
+                ${categoryBadges}
+                ${w.pos ? `<span class="text-[10px] px-1.5 py-0.2 rounded bg-taigi-50 text-taigi-700 border border-taigi-200 font-medium">${w.pos}</span>` : ''}
+              </div>
+
               <div class="text-xs text-slate-600 mt-2 leading-relaxed line-clamp-3">
                 ${w.definition || '（無釋義）'}
               </div>
@@ -2038,56 +2297,13 @@
       const textarea = document.getElementById('lyrics-input');
       textarea.value += (textarea.value ? '\n' : '') + word;
       onLyricsChange();
-      alert(`已將「${word}」加至歌詞尾行！`);
-    }
-
-    // ==========================================
-    // 13 大韻部指南渲染 (Guide Grid)
-    // ==========================================
-    function renderGuideGrid() {
-      const container = document.getElementById('rhyme-groups-guide-grid');
-      container.innerHTML = '';
-
-      const TYPE_NAMES = {
-        open: "開尾韻 / 複元音",
-        nasal: "陽聲韻 (鼻音收尾)",
-        stop: "入聲韻 (塞音收尾)"
-      };
-
-      for (const [gid, info] of Object.entries(rhymeGroupsData)) {
-        const card = document.createElement('div');
-        const badgeClass = `badge-${gid}`;
-        card.className = "bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between";
-        card.innerHTML = `
-          <div>
-            <div class="flex items-center justify-between">
-              <span class="px-2.5 py-1 rounded-lg text-xs font-bold border ${badgeClass}">${gid}</span>
-              <span class="text-xs text-slate-400 font-medium">${TYPE_NAMES[info.type] || info.type}</span>
-            </div>
-            <h3 class="text-base font-bold text-slate-900 mt-2">${info.description}</h3>
-
-            <div class="mt-3">
-              <div class="text-xs text-slate-400 mb-1.5">包含韻母 (Variants)：</div>
-              <div class="flex flex-wrap gap-1">
-                ${info.variants.map(v => `<span class="px-2 py-0.5 text-xs font-mono rounded bg-slate-100 text-slate-700 border border-slate-200">${v}</span>`).join('')}
-              </div>
-            </div>
-          </div>
-
-          <div class="pt-3 border-t border-slate-100 mt-4 flex justify-between items-center">
-            <button onclick="filterDictByGroup('${gid}')" class="text-xs text-taigi-600 hover:text-taigi-800 font-medium flex items-center gap-1 transition">
-              <i class="fa-solid fa-arrow-up-right-from-square"></i> 查看此韻所有辭典詞彙
-            </button>
-          </div>
-        `;
-        container.appendChild(card);
-      }
     }
 
     function filterDictByGroup(gid) {
       selectedRhymeGroupFilter = gid;
+      selectedSubRhymeFilter = '';
       switchTab('dictionary');
-      renderDictRhymeTags();
+      fetchDictionaryFacets();
       loadDictionaryWords(0);
     }
 

@@ -167,10 +167,27 @@ def suggest_api():
     except Exception as e:
         return json_response({'error': str(e)}, status=500)
 
+@app.route('/api/categories', method=['GET'])
+def get_categories_facets_api():
+    try:
+        rhyme_group = request.query.getunicode('rhyme_group') or None
+        rhyme = request.query.getunicode('rhyme') or None
+        category = request.query.getunicode('category') or None
+        facets = service.get_dictionary_facets(
+            rhyme_group=rhyme_group,
+            rhyme=rhyme,
+            category=category
+        )
+        return json_response(facets)
+    except Exception as e:
+        return json_response({'error': str(e)}, status=500)
+
 @app.route('/api/dictionary', method=['GET'])
 def query_dictionary_api():
     try:
         # 使用 getunicode 獲取 utf-8 query param 解決中文詞性與關鍵字亂碼
+        category = request.query.getunicode('category') or None
+        rhyme = request.query.getunicode('rhyme') or None
         rhyme_group = request.query.getunicode('rhyme_group') or None
         tone_str = request.query.getunicode('tone')
         tone = None
@@ -193,6 +210,8 @@ def query_dictionary_api():
             char_count=char_count,
             pos=pos,
             keyword=keyword,
+            category=category,
+            rhyme=rhyme,
             limit=limit,
             offset=offset
         )

@@ -15,3 +15,4 @@ ENV/
 # Temporary / Scratch
 test_kua.db
 *.log
+scratch/

@@ -22,6 +22,41 @@ sys.stdout.reconfigure(encoding='utf-8')
 # 常見歌詞段落標題過濾正則
 SECTION_HEADER_RE = re.compile(r'^\s*((\[|【|\(|（).*?(\]|】|\)|）)|#+.*|第\s*[0-9一二三四五六七八九十]+\s*[段節首葩].*|(前奏|主歌|副歌|尾奏|橋段|間奏|A段|B段|C段|Chorus|Verse|Bridge|Intro|Outro|[0-9]+)\s*(\]|】|\)|）|:)?)\s*$', re.IGNORECASE)
 
+# 主題分類對應圖示
+CATEGORY_ICONS = {
+    "天氣": "⛅",
+    "植物": "🌸",
+    "動物": "🐾",
+    "菜餚": "🍲",
+    "魚類": "🐟",
+    "昆蟲": "🦋",
+    "心情": "💖",
+    "飲食": "🍵",
+    "地理": "🏔️",
+    "天文": "✨",
+    "人生": "⏳",
+    "身體": "💪",
+    "器物": "🏡",
+    "服飾": "👘",
+    "建築": "🏛️",
+    "社會": "👥",
+    "民俗": "🏮",
+    "文藝": "📜",
+    "動作": "🏃",
+    "狀態": "🎨",
+    "言語": "💬",
+    "時空": "🌌",
+    "其他": "📦"
+}
+
+# 主題分類預設排列順序（天氣、植物、動物、菜餚、魚類、昆蟲、心情 置頂優先）
+CATEGORY_ORDER = [
+    "天氣", "植物", "動物", "菜餚", "魚類", "昆蟲", "心情",
+    "飲食", "地理", "天文", "人生", "身體", "器物", "服飾",
+    "建築", "社會", "民俗", "文藝", "動作", "狀態", "言語",
+    "時空", "其他"
+]
+
 # 寫歌常用詩意詞彙情境庫 (用於本地智慧推薦評分與題材歸類)
 THEMATIC_KEYWORDS = {
     "思念情感": ["愛", "情", "心", "夢", "想", "戀", "念", "恨", "痛", "悲", "望", "淚", "相思", "等待", "難忘", "情深", "溫柔", "牽掛"],
@@ -1414,64 +1449,96 @@ class RhymeService:
                           char_count: Optional[int] = None,
                           pos: Optional[str] = None,
                           keyword: Optional[str] = None,
+                          category: Optional[str] = None,
+                          rhyme: Optional[str] = None,
                           limit: int = 50,
                           offset: int = 0) -> Dict[str, Any]:
         """
-        多條件檢索教育部辭典押韻詞彙（支援單一聲調或多聲調組合如 [1, 5, 7, 8]）
+        多條件檢索教育部辭典押韻詞彙，支援：
+        - 主題分類篩選（如 天氣、植物、動物、菜餚、魚類、昆蟲、心情 等）
+        - 13 大通押韻部（如 OPEN_A）或精確韻母/韻腳（如 ann, a, i, ang）
+        - 單一聲調或多聲調組合（如 [1, 5, 7, 8]）
+        - 詞性、字數與關鍵字檢索
         """
         conn = self.get_db_connection()
         c = conn.cursor()
         
-        query = "SELECT id, word_type, hanji, tailo, pos, definition, rhyme_group, tone, char_count FROM words WHERE 1=1"
-        params = []
-        
+        # 決定資料來源表（若有指定主題分類，JOIN word_categories）
+        if category:
+            base_from = "FROM words w JOIN word_categories wc ON w.id = wc.word_id"
+            where_clauses = ["wc.category_main = ?"]
+            params = [category]
+        else:
+            base_from = "FROM words w"
+            where_clauses = ["1=1"]
+            params = []
+            
         if rhyme_group:
-            query += " AND rhyme_group = ?"
+            where_clauses.append("w.rhyme_group = ?")
             params.append(rhyme_group)
+            
+        if rhyme:
+            where_clauses.append("w.last_rhyme = ?")
+            params.append(rhyme.strip().lower())
+            
         if tone is not None:
             if isinstance(tone, (list, tuple, set)):
                 clean_list = [int(t) for t in tone if str(t).isdigit()]
                 if clean_list:
                     placeholders = ','.join(['?'] * len(clean_list))
-                    query += f" AND tone IN ({placeholders})"
+                    where_clauses.append(f"w.tone IN ({placeholders})")
                     params.extend(clean_list)
             elif isinstance(tone, str):
                 clean_list = [int(t) for t in re.split(r'[,.\s]+', tone.strip()) if t.isdigit()]
                 if len(clean_list) == 1:
-                    query += " AND tone = ?"
+                    where_clauses.append("w.tone = ?")
                     params.append(clean_list[0])
                 elif len(clean_list) > 1:
                     placeholders = ','.join(['?'] * len(clean_list))
-                    query += f" AND tone IN ({placeholders})"
+                    where_clauses.append(f"w.tone IN ({placeholders})")
                     params.extend(clean_list)
             elif isinstance(tone, int):
-                query += " AND tone = ?"
+                where_clauses.append("w.tone = ?")
                 params.append(tone)
+                
         if char_count:
-            query += " AND char_count = ?"
+            where_clauses.append("w.char_count = ?")
             params.append(char_count)
+            
         if pos:
-            query += " AND pos LIKE ?"
+            where_clauses.append("w.pos LIKE ?")
             params.append(f"%{pos}%")
+            
         if keyword:
-            query += " AND (hanji LIKE ? OR definition LIKE ? OR tailo LIKE ?)"
+            where_clauses.append("(w.hanji LIKE ? OR w.definition LIKE ? OR w.tailo LIKE ?)")
             params.extend([f"%{keyword}%", f"%{keyword}%", f"%{keyword}%"])
             
+        where_sql = " AND ".join(where_clauses)
+        
         # 計算總數
-        count_query = query.replace("SELECT id, word_type, hanji, tailo, pos, definition, rhyme_group, tone, char_count", "SELECT COUNT(*)")
-        c.execute(count_query, params)
+        count_sql = f"SELECT COUNT(DISTINCT w.id) {base_from} WHERE {where_sql}"
+        c.execute(count_sql, params)
         total_count = c.fetchone()[0]
         
-        # 排序：優先呈現常用的 2 字詞與 1 字詞，且有詳細釋義者
-        query += " ORDER BY char_count ASC, LENGTH(definition) DESC LIMIT ? OFFSET ?"
-        params.extend([limit, offset])
-        
-        c.execute(query, params)
+        # 查詢詳細詞目
+        group_by = "GROUP BY w.id" if category else ""
+        select_sql = f"""
+            SELECT w.id, w.word_type, w.hanji, w.tailo, w.pos, w.definition, 
+                   w.rhyme_group, w.last_rhyme, w.tone, w.char_count, w.category_main,
+                   (SELECT GROUP_CONCAT(category_main, '、') FROM word_categories WHERE word_id = w.id) as categories
+            {base_from}
+            WHERE {where_sql}
+            {group_by}
+            ORDER BY w.char_count ASC, LENGTH(w.definition) DESC
+            LIMIT ? OFFSET ?
+        """
+        c.execute(select_sql, params + [limit, offset])
         rows = c.fetchall()
         conn.close()
         
         words = []
         for r in rows:
+            cats = r["categories"] if "categories" in r.keys() and r["categories"] else (r["category_main"] if "category_main" in r.keys() else "")
             words.append({
                 "id": r["id"],
                 "hanji": r["hanji"],
@@ -1479,8 +1546,11 @@ class RhymeService:
                 "pos": r["pos"],
                 "definition": r["definition"],
                 "rhyme_group": r["rhyme_group"],
+                "last_rhyme": r["last_rhyme"] if "last_rhyme" in r.keys() else "",
                 "tone": r["tone"],
-                "char_count": r["char_count"]
+                "char_count": r["char_count"],
+                "category_main": r["category_main"] if "category_main" in r.keys() else "",
+                "categories": cats
             })
             
         return {
@@ -1488,6 +1558,123 @@ class RhymeService:
             "limit": limit,
             "offset": offset,
             "words": words
+        }
+
+    def get_dictionary_facets(self, 
+                              rhyme_group: Optional[str] = None, 
+                              rhyme: Optional[str] = None, 
+                              category: Optional[str] = None) -> Dict[str, Any]:
+        """
+        獲取詞典分類與韻部的雙向統計 Facets，支援：
+        1. 選定韻部/韻腳時，計算各分類的詞數分佈（如選 ann 韻時顯示各分類詞數）
+        2. 選定分類時，計算 13 大通押部與子韻腳的詞數分佈（如選天氣時顯示各韻部詞數）
+        """
+        conn = self.get_db_connection()
+        c = conn.cursor()
+        
+        # 1. 統計各主題分類詞數 (若已選定 rhyme 或 rhyme_group 則帶入過濾)
+        cat_query = """
+            SELECT wc.category_main, COUNT(DISTINCT w.id) as cnt
+            FROM words w
+            JOIN word_categories wc ON w.id = wc.word_id
+        """
+        cat_params = []
+        cat_where = []
+        if rhyme:
+            cat_where.append("w.last_rhyme = ?")
+            cat_params.append(rhyme.strip().lower())
+        elif rhyme_group:
+            cat_where.append("w.rhyme_group = ?")
+            cat_params.append(rhyme_group)
+            
+        if cat_where:
+            cat_query += " WHERE " + " AND ".join(cat_where)
+        cat_query += " GROUP BY wc.category_main"
+        
+        c.execute(cat_query, cat_params)
+        cat_map = {row["category_main"]: row["cnt"] for row in c.fetchall()}
+        
+        categories_list = []
+        all_cats = list(dict.fromkeys(CATEGORY_ORDER + list(cat_map.keys())))
+        for cat_name in all_cats:
+            cnt = cat_map.get(cat_name, 0)
+            categories_list.append({
+                "name": cat_name,
+                "icon": CATEGORY_ICONS.get(cat_name, "🏷️"),
+                "count": cnt,
+                "active": (cat_name == category)
+            })
+            
+        # 若已有選定韻腳或韻部，將有詞目的分類依數量排序（但保留優先分類置頂）
+        if rhyme or rhyme_group:
+            priority_set = set(["天氣", "植物", "動物", "菜餚", "魚類", "昆蟲", "心情"])
+            categories_list.sort(key=lambda x: (x["count"] == 0, -(x["name"] in priority_set), -x["count"]))
+            
+        # 2. 統計 13 大通押部詞數 (若已選定 category 則帶入過濾)
+        rg_query = "SELECT w.rhyme_group, COUNT(DISTINCT w.id) as cnt FROM words w"
+        rg_params = []
+        if category:
+            rg_query += " JOIN word_categories wc ON w.id = wc.word_id WHERE wc.category_main = ?"
+            rg_params.append(category)
+        rg_query += " GROUP BY w.rhyme_group"
+        
+        c.execute(rg_query, rg_params)
+        rg_map = {row["rhyme_group"]: row["cnt"] for row in c.fetchall() if row["rhyme_group"]}
+        
+        rhyme_groups_meta = self.matcher.rhyme_groups if hasattr(self, 'matcher') and hasattr(self.matcher, 'rhyme_groups') else {}
+        if not rhyme_groups_meta:
+            from pathlib import Path
+            import json
+            json_path = Path(__file__).parent / "rhyme_groups.json"
+            if json_path.exists():
+                with open(json_path, "r", encoding="utf-8") as jf:
+                    rhyme_groups_meta = json.load(jf)
+                    
+        rhyme_groups_list = []
+        for gid, meta in rhyme_groups_meta.items():
+            rhyme_groups_list.append({
+                "group_id": gid,
+                "description": meta.get("description", gid),
+                "type": meta.get("type", "open"),
+                "count": rg_map.get(gid, 0),
+                "variants": meta.get("variants", []),
+                "active": (gid == rhyme_group)
+            })
+            
+        # 3. 統計具體子韻母 (last_rhyme)
+        rhyme_where = ["w.last_rhyme IS NOT NULL", "w.last_rhyme != ''"]
+        rhyme_params = []
+        rhyme_from = "FROM words w"
+        if category:
+            rhyme_from += " JOIN word_categories wc ON w.id = wc.word_id"
+            rhyme_where.append("wc.category_main = ?")
+            rhyme_params.append(category)
+        if rhyme_group:
+            rhyme_where.append("w.rhyme_group = ?")
+            rhyme_params.append(rhyme_group)
+            
+        rhyme_sql = f"""
+            SELECT w.last_rhyme, COUNT(DISTINCT w.id) as cnt 
+            {rhyme_from} 
+            WHERE {" AND ".join(rhyme_where)}
+            GROUP BY w.last_rhyme 
+            ORDER BY cnt DESC 
+            LIMIT 40
+        """
+        c.execute(rhyme_sql, rhyme_params)
+        sub_rhymes = [{"rhyme": r["last_rhyme"], "count": r["cnt"], "active": (r["last_rhyme"] == rhyme)} for r in c.fetchall()]
+        
+        conn.close()
+        
+        return {
+            "active_filters": {
+                "category": category,
+                "rhyme_group": rhyme_group,
+                "rhyme": rhyme
+            },
+            "categories": categories_list,
+            "rhyme_groups": rhyme_groups_list,
+            "sub_rhymes": sub_rhymes
         }
 
     def suggest_rhyming_words(self, current_line: str, 
