@@ -11,6 +11,7 @@ import sqlite3
 import unicodedata
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple, Union
+import asyncio
 import httpx
 from dotenv import load_dotenv
 from rhyme_helper import TaiwaneseRhymeMatcher
@@ -1681,6 +1682,7 @@ class RhymeService:
                               target_rhyme_group: str, 
                               role_index: int = 2,
                               tone_filter: Optional[str] = None,
+                              category_filter: Optional[str] = None,
                               top_k: int = 16) -> List[Dict[str, Any]]:
         """
         智慧換字詞：針對當前行在四句聯中的角色與目標押韻部，推薦語意契合且聲調合律的台語詞
@@ -1781,6 +1783,38 @@ class RhymeService:
             ORDER BY id ASC LIMIT 300
             """, (target_rhyme_group,))
             pool = c.fetchall()
+
+        category_candidates = []
+        if category_filter:
+            c.execute("""
+            SELECT DISTINCT w.id, w.hanji, w.tailo, w.pos, w.definition, w.rhyme_group, w.tone, w.char_count
+            FROM words w
+            JOIN word_categories wc ON w.id = wc.word_id
+            WHERE wc.category_main = ? AND w.rhyme_group = ? AND w.definition != ''
+            ORDER BY w.char_count ASC, LENGTH(w.definition) DESC
+            LIMIT 150
+            """, (category_filter, target_rhyme_group))
+            for r in c.fetchall():
+                score = 120
+                hanji = r["hanji"]
+                if len(hanji) == orig_tail_len:
+                    score += 40
+                elif len(hanji) == 2:
+                    score += 20
+                if orig_pos:
+                    for main_p in ["動詞", "形容詞", "名詞", "副詞"]:
+                        if main_p in orig_pos and main_p in (r["pos"] or ""):
+                            score += 25
+                category_candidates.append({
+                    "hanji": hanji,
+                    "tailo": r["tailo"],
+                    "pos": r["pos"],
+                    "definition": r["definition"],
+                    "rhyme_group": r["rhyme_group"],
+                    "tone": r["tone"],
+                    "source": f"【{category_filter}】主題推薦",
+                    "score": score
+                })
         conn.close()
 
         theme_candidates = []
@@ -1822,7 +1856,10 @@ class RhymeService:
             })
 
         # 合併候選詞並標註聲調與評分加權 (周定邦老師格律)
-        raw_candidates = synonym_candidates + theme_candidates
+        if category_candidates:
+            raw_candidates = category_candidates
+        else:
+            raw_candidates = synonym_candidates + theme_candidates
         for cand in raw_candidates:
             t = cand.get("tone")
             is_rec = t in recommended_tones
@@ -1914,7 +1951,8 @@ class RhymeService:
                                     next_line: str = "",
                                     role_index: int = 2,
                                     style: str = "抒情",
-                                    tone_filter: Optional[str] = "recommended") -> str:
+                                    tone_filter: Optional[str] = "recommended",
+                                    category_filter: Optional[str] = None) -> str:
         clean_cur = current_line.strip()
         raw_chars = re.sub(r"[^\w\u4e00-\u9fff]", "", clean_cur)
         char_count = len(raw_chars) if raw_chars else 7
@@ -1951,6 +1989,7 @@ class RhymeService:
 - 下一句：{next_line or '（無）'}
 - 原句字數：恰好 {char_count} 個漢字（極重要！七字調必須保持 {char_count} 字，不可變動字數）
 - 歌詞風格/情境：{style}
+{f"- 主題題材限制：請融入「" + category_filter + "」之生活意象與道地語彙，使歌詞具有鮮明的主題氛圍。" if category_filter else ""}
 - 四句聯角色：{role_name}
 - 目標押韻部：{target_rhyme_group}（{grp_desc}，核心韻母：{variants}）
 - 聲調與格律要求：{tone_req}
@@ -2162,7 +2201,8 @@ class RhymeService:
                                             next_line: str = "",
                                             style: str = "抒情",
                                             role_index: int = 2,
-                                            tone_filter: Optional[str] = None) -> Dict[str, Any]:
+                                            tone_filter: Optional[str] = None,
+                                            category_filter: Optional[str] = None) -> Dict[str, Any]:
         """
         本地精選詞庫與歌仔冊種子句之備援換句引擎（保證字數嚴格對齊）
         """
@@ -2176,6 +2216,7 @@ class RhymeService:
             clean_cur, target_rhyme_group,
             role_index=role_index,
             tone_filter=tone_filter,
+            category_filter=category_filter,
             top_k=16
         )
 
@@ -2280,6 +2321,7 @@ class RhymeService:
                                                  style: str = "抒情",
                                                  role_index: int = 2,
                                                  tone_filter: Optional[str] = None,
+                                                 category_filter: Optional[str] = None,
                                                  api_key: Optional[str] = None) -> Dict[str, Any]:
         """
         全方位改句、換句、前後句替換、倒裝與周定邦老師格律引導引擎 (異步 AI 優先)
@@ -2356,7 +2398,8 @@ class RhymeService:
                     next_line=clean_next,
                     role_index=role_index,
                     style=style,
-                    tone_filter=tone_filter
+                    tone_filter=tone_filter,
+                    category_filter=category_filter
                 )
                 raw_ai = await self.call_gemini_ai(ai_prompt, api_key=active_key, response_json=True)
                 if raw_ai and not raw_ai.startswith("Gemini 呼叫失敗"):
@@ -2377,7 +2420,8 @@ class RhymeService:
                 next_line=clean_next,
                 style=style,
                 role_index=role_index,
-                tone_filter=tone_filter
+                tone_filter=tone_filter,
+                category_filter=category_filter
             )
 
         result_data.update({
@@ -2398,6 +2442,7 @@ class RhymeService:
                                      style: str = "抒情",
                                      role_index: int = 2,
                                      tone_filter: Optional[str] = None,
+                                     category_filter: Optional[str] = None,
                                      api_key: Optional[str] = None) -> Dict[str, Any]:
         """
         同步相容包裝
@@ -2416,7 +2461,8 @@ class RhymeService:
                 next_line=next_line,
                 style=style,
                 role_index=role_index,
-                tone_filter=tone_filter
+                tone_filter=tone_filter,
+                category_filter=category_filter
             )
             res.update({
                 "current_line": current_line.strip(),
@@ -2435,6 +2481,7 @@ class RhymeService:
                 style=style,
                 role_index=role_index,
                 tone_filter=tone_filter,
+                category_filter=category_filter,
                 api_key=api_key
             ))
 

@@ -254,12 +254,43 @@
             <h2 class="text-2xl font-serif font-bold mt-2" id="focus-line-text">尚未選擇歌詞行</h2>
           </div>
 
-          <!-- 目標韻部切換選單 -->
-          <div class="flex items-center gap-2 bg-slate-800/80 p-2 rounded-xl border border-slate-700">
-            <span class="text-xs text-slate-300">目標押韻部：</span>
-            <select id="assistant-target-rhyme" onchange="onTargetRhymeChanged()" class="bg-slate-900 text-white border border-taigi-500 rounded-lg px-2.5 py-1 text-sm font-medium focus:outline-none">
-              <!-- 動態生成 13 大韻部選項 -->
-            </select>
+          <!-- 目標韻部切換選單 與 題材領域切換 -->
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <div class="flex items-center gap-2 bg-slate-800/80 p-2 rounded-xl border border-slate-700">
+              <span class="text-xs text-slate-300">目標押韻部：</span>
+              <select id="assistant-target-rhyme" onchange="onTargetRhymeChanged()" class="bg-slate-900 text-white border border-taigi-500 rounded-lg px-2.5 py-1 text-sm font-medium focus:outline-none">
+                <!-- 動態生成 13 大韻部選項 -->
+              </select>
+            </div>
+
+            <div class="flex items-center gap-2 bg-slate-800/80 p-2 rounded-xl border border-slate-700">
+              <span class="text-xs text-amber-300 font-medium"><i class="fa-solid fa-shapes text-amber-400 mr-1"></i>題材領域：</span>
+              <select id="assistant-target-category" onchange="onTargetCategoryChanged()" class="bg-slate-900 text-white border border-amber-500/70 rounded-lg px-2 py-1 text-sm font-medium focus:outline-none">
+                <option value="">全部題材 (自由推薦)</option>
+                <option value="天氣">⛅ 天氣</option>
+                <option value="植物">🌸 植物</option>
+                <option value="動物">🐾 動物</option>
+                <option value="菜餚">🍲 菜餚</option>
+                <option value="魚類">🐟 魚類</option>
+                <option value="昆蟲">🦋 昆蟲</option>
+                <option value="心情">💖 心情</option>
+                <option value="飲食">🍵 飲食</option>
+                <option value="地理">🏔️ 地理</option>
+                <option value="天文">✨ 天文</option>
+                <option value="人生">⏳ 人生</option>
+                <option value="身體">💪 身體</option>
+                <option value="器物">🏡 器物</option>
+                <option value="服飾">👘 服飾</option>
+                <option value="建築">🏛️ 建築</option>
+                <option value="社會">👥 社會</option>
+                <option value="民俗">🏮 民俗</option>
+                <option value="文藝">📜 文藝</option>
+                <option value="動作">🏃 動作</option>
+                <option value="狀態">🎨 狀態</option>
+                <option value="言語">💬 言語</option>
+                <option value="時空">🌌 時空</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -1596,21 +1627,27 @@
       fetchSentenceSuggestions();
     }
 
+    function onTargetCategoryChanged() {
+      fetchSentenceSuggestions();
+    }
+
     // 向後端請求智慧換詞換句建議
     async function fetchSentenceSuggestions() {
       if (!currentAnalysis || !currentAnalysis.lines[selectedLineIndex]) return;
       const curLine = currentAnalysis.lines[selectedLineIndex];
       const targetGroup = document.getElementById('assistant-target-rhyme').value;
+      const targetCategory = document.getElementById('assistant-target-category')?.value || '';
       const prevText = document.getElementById('focus-prev-text').textContent;
       const nextText = document.getElementById('focus-next-text').textContent;
       const rIdx = curLine.role_index || 2;
       const userApiKey = localStorage.getItem('taigi_gemini_api_key') || '';
 
+      const catBadge = targetCategory ? `【${targetCategory}】題材・` : '';
       const guideText = (rIdx === 2 || rIdx === 4) ? '周定邦老師格律：1、5最好（嚴禁降調）' : '周定邦老師格律：自由發揮（情境契合）';
       document.getElementById('word-suggestions-list').innerHTML = `
         <div class="text-center text-slate-500 py-12">
           <i class="fa-solid fa-spinner fa-spin mr-2 text-taigi-600 text-lg"></i>
-          <p class="font-bold text-sm text-slate-700 mt-2">AI 正在依【${guideText}】構思改寫建議...</p>
+          <p class="font-bold text-sm text-slate-700 mt-2">AI 正在依${catBadge}【${guideText}】構思改寫建議...</p>
           <p class="text-xs text-slate-400 mt-1">嚴格對齊原句字數、深入文意情境與音韻格律校驗</p>
         </div>
       `;
@@ -1622,6 +1659,7 @@
           body: JSON.stringify({
             current_line: curLine.text,
             target_rhyme_group: targetGroup,
+            category_filter: targetCategory,
             prev_line: prevText === '（無）' ? '' : prevText,
             next_line: nextText === '（無）' ? '' : nextText,
             role_index: rIdx,

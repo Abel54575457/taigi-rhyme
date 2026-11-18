@@ -109,6 +109,7 @@ def suggest_api():
         api_key = data.get('api_key', '')
         role_index = int(data.get('role_index', 2))
         tone_filter = data.get('tone_filter', None)
+        category_filter = data.get('category_filter', None)
         
         active_key = api_key or os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')
         
@@ -120,6 +121,7 @@ def suggest_api():
             style=style,
             role_index=role_index,
             tone_filter=tone_filter,
+            category_filter=category_filter,
             api_key=active_key
         ))
         
