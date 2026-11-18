@@ -1520,6 +1520,38 @@ class RhymeService:
         count_sql = f"SELECT COUNT(DISTINCT w.id) {base_from} WHERE {where_sql}"
         c.execute(count_sql, params)
         total_count = c.fetchone()[0]
+
+        is_fallback_group = False
+        fallback_group = ""
+        # 若指定了精確子韻母 (如 ann) 與特定條件後無完全相同子韻母之詞，自動展開其所屬 13 大通押部 (如 OPEN_A)
+        if total_count == 0 and rhyme:
+            clean_rh = rhyme.strip().lower()
+            parent_grp = self.matcher.variant_to_group.get(clean_rh, "")
+            if parent_grp:
+                # 重建把 w.last_rhyme = ? 替換為 w.rhyme_group = parent_grp 的條件
+                fb_where_clauses = []
+                fb_params = []
+                p_idx = 0
+                for cl in where_clauses:
+                    num_q = cl.count('?')
+                    chunk_p = params[p_idx:p_idx + num_q]
+                    p_idx += num_q
+                    if cl == "w.last_rhyme = ?":
+                        fb_where_clauses.append("w.rhyme_group = ?")
+                        fb_params.append(parent_grp)
+                    elif cl == "w.rhyme_group = ?":
+                        continue
+                    else:
+                        fb_where_clauses.append(cl)
+                        fb_params.extend(chunk_p)
+                where_sql = " AND ".join(fb_where_clauses)
+                params = fb_params
+                c.execute(f"SELECT COUNT(DISTINCT w.id) {base_from} WHERE {where_sql}", params)
+                fb_total = c.fetchone()[0]
+                if fb_total > 0:
+                    total_count = fb_total
+                    is_fallback_group = True
+                    fallback_group = parent_grp
         
         # 查詢詳細詞目
         group_by = "GROUP BY w.id" if category else ""
@@ -1530,7 +1562,7 @@ class RhymeService:
             {base_from}
             WHERE {where_sql}
             {group_by}
-            ORDER BY w.char_count ASC, LENGTH(w.definition) DESC
+            ORDER BY (CASE WHEN w.definition LIKE '(%' THEN 0 ELSE 1 END) ASC, w.char_count ASC, LENGTH(w.definition) DESC
             LIMIT ? OFFSET ?
         """
         c.execute(select_sql, params + [limit, offset])
@@ -1558,6 +1590,9 @@ class RhymeService:
             "total": total_count,
             "limit": limit,
             "offset": offset,
+            "is_fallback_group": is_fallback_group,
+            "fallback_group": fallback_group,
+            "strict_rhyme": rhyme or "",
             "words": words
         }
 
@@ -1567,8 +1602,8 @@ class RhymeService:
                               category: Optional[str] = None) -> Dict[str, Any]:
         """
         獲取詞典分類與韻部的雙向統計 Facets，支援：
-        1. 選定韻部/韻腳時，計算各分類的詞數分佈（如選 ann 韻時顯示各分類詞數）
-        2. 選定分類時，計算 13 大通押部與子韻腳的詞數分佈（如選天氣時顯示各韻部詞數）
+        1. 選定韻部/韻腳時，計算各分類的詞數分佈（如選 ann 韻時顯示各分類詞數及同部通押詞數）
+        2. 選定分類時，計算 13 大通押部與全部子韻腳的詞數分佈（如選天氣、昆蟲、菜餚時顯示各韻部詞數）
         """
         conn = self.get_db_connection()
         c = conn.cursor()
@@ -1581,9 +1616,12 @@ class RhymeService:
         """
         cat_params = []
         cat_where = []
+        parent_group = ""
         if rhyme:
+            clean_rh = rhyme.strip().lower()
             cat_where.append("w.last_rhyme = ?")
-            cat_params.append(rhyme.strip().lower())
+            cat_params.append(clean_rh)
+            parent_group = self.matcher.variant_to_group.get(clean_rh, "")
         elif rhyme_group:
             cat_where.append("w.rhyme_group = ?")
             cat_params.append(rhyme_group)
@@ -1594,22 +1632,42 @@ class RhymeService:
         
         c.execute(cat_query, cat_params)
         cat_map = {row["category_main"]: row["cnt"] for row in c.fetchall()}
+
+        # 若選定了具體子韻母 (如 ann)，同步計算其所屬通押部 (如 OPEN_A) 各分類詞數，方便通押檢索
+        group_cat_map = {}
+        if rhyme and parent_group:
+            c.execute("""
+                SELECT wc.category_main, COUNT(DISTINCT w.id) as cnt
+                FROM words w
+                JOIN word_categories wc ON w.id = wc.word_id
+                WHERE w.rhyme_group = ?
+                GROUP BY wc.category_main
+            """, (parent_group,))
+            group_cat_map = {row["category_main"]: row["cnt"] for row in c.fetchall()}
         
         categories_list = []
         all_cats = list(dict.fromkeys(CATEGORY_ORDER + list(cat_map.keys())))
         for cat_name in all_cats:
             cnt = cat_map.get(cat_name, 0)
+            g_cnt = group_cat_map.get(cat_name, cnt)
             categories_list.append({
                 "name": cat_name,
                 "icon": CATEGORY_ICONS.get(cat_name, "🏷️"),
                 "count": cnt,
+                "group_count": g_cnt,
+                "parent_group": parent_group,
                 "active": (cat_name == category)
             })
             
-        # 若已有選定韻腳或韻部，將有詞目的分類依數量排序（但保留優先分類置頂）
+        # 若已有選定韻腳或韻部，保留核心優先分類置頂，其餘依數量排序
         if rhyme or rhyme_group:
-            priority_set = set(["天氣", "植物", "動物", "菜餚", "魚類", "昆蟲", "心情"])
-            categories_list.sort(key=lambda x: (x["count"] == 0, -(x["name"] in priority_set), -x["count"]))
+            priority_list = ["天氣", "植物", "動物", "菜餚", "魚類", "昆蟲", "心情"]
+            categories_list.sort(key=lambda x: (
+                0 if x["name"] in priority_list else 1,
+                priority_list.index(x["name"]) if x["name"] in priority_list else 99,
+                -x["count"],
+                -x.get("group_count", 0)
+            ))
             
         # 2. 統計 13 大通押部詞數 (若已選定 category 則帶入過濾)
         rg_query = "SELECT w.rhyme_group, COUNT(DISTINCT w.id) as cnt FROM words w"
@@ -1642,7 +1700,7 @@ class RhymeService:
                 "active": (gid == rhyme_group)
             })
             
-        # 3. 統計具體子韻母 (last_rhyme)
+        # 3. 統計具體子韻母 (last_rhyme) - 完整列出不截斷，並將常用核心韻腳如 ann, a, ang, ong, i, u, e, oo 等置頂
         rhyme_where = ["w.last_rhyme IS NOT NULL", "w.last_rhyme != ''"]
         rhyme_params = []
         rhyme_from = "FROM words w"
@@ -1659,11 +1717,29 @@ class RhymeService:
             {rhyme_from} 
             WHERE {" AND ".join(rhyme_where)}
             GROUP BY w.last_rhyme 
-            ORDER BY cnt DESC 
-            LIMIT 40
+            ORDER BY cnt DESC
         """
         c.execute(rhyme_sql, rhyme_params)
-        sub_rhymes = [{"rhyme": r["last_rhyme"], "count": r["cnt"], "active": (r["last_rhyme"] == rhyme)} for r in c.fetchall()]
+        raw_sub_rhymes = [{"rhyme": r["last_rhyme"], "count": r["cnt"], "active": (r["last_rhyme"] == rhyme)} for r in c.fetchall()]
+
+        # 確保若當前選定了某個 rhyme (如 ann)，即使在該分類下嚴格詞數為 0，也保留在列表中顯示為 active
+        existing_rhyme_names = {r["rhyme"] for r in raw_sub_rhymes}
+        if rhyme and rhyme.strip().lower() not in existing_rhyme_names:
+            raw_sub_rhymes.insert(0, {"rhyme": rhyme.strip().lower(), "count": 0, "active": True})
+        elif not rhyme_group and "ann" not in existing_rhyme_names:
+            raw_sub_rhymes.append({"rhyme": "ann", "count": 0, "active": (rhyme == "ann")})
+
+        # 置頂代表性韻腳（讓 ann 韻、a 韻、i 韻、u 韻、e 韻、oo 韻、ang 韻、ong 韻 等在第一排即可點選）
+        featured_rhymes = ["ann", "a", "ia", "ua", "iann", "uann", "i", "inn", "u", "e", "ue", "enn", "oo", "o", "io", "ai", "ui", "au", "iau", "iu", "ang", "an", "ian", "uan", "am", "in", "ing", "un", "ong", "iong", "ng"]
+        sub_rhymes = sorted(
+            raw_sub_rhymes,
+            key=lambda x: (
+                0 if x["active"] else 1,
+                0 if x["rhyme"] in featured_rhymes else 1,
+                featured_rhymes.index(x["rhyme"]) if x["rhyme"] in featured_rhymes else 999,
+                -x["count"]
+            )
+        )
         
         conn.close()
         
