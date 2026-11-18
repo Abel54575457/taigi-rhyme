@@ -232,6 +232,53 @@
 
       </div>
 
+      <!-- 寫歌工作台底部：題材 ⇄ 韻腳 雙向快查百寶箱 -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <span class="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center font-bold text-sm">
+              ⚡
+            </span>
+            <div>
+              <h3 class="font-bold text-slate-800 text-base">題材 ⇄ 韻腳 雙向快查百寶箱（邊寫歌邊挑詞）</h3>
+              <p class="text-xs text-slate-400">可先選韻腳（如 ann 韻）再挑類別（如 心情、昆蟲、菜餚），或先選類別再挑韻腳；點擊詞彙直接加進歌詞！</p>
+            </div>
+          </div>
+          <button onclick="switchTab('dictionary')" class="px-3 py-1.5 bg-taigi-50 hover:bg-taigi-100 text-taigi-700 border border-taigi-200 rounded-lg text-xs font-bold transition flex items-center gap-1.5 self-start sm:self-auto">
+            <i class="fa-solid fa-book-bookmark"></i> 開啟完整辭典檢索 (<span id="studio-box-total-count">0</span> 筆)
+          </button>
+        </div>
+
+        <!-- 第一排：22 大主題分類快選 -->
+        <div>
+          <div class="text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+            <i class="fa-solid fa-shapes text-amber-500"></i> 1. 主題類別（22 大領域）：
+          </div>
+          <div class="flex flex-wrap gap-1.5" id="studio-category-tags"></div>
+        </div>
+
+        <!-- 第二排：精確韻腳 / 子韻母快選 -->
+        <div>
+          <div class="text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+            <i class="fa-solid fa-spell-check text-indigo-600"></i> 2. 常用韻腳（如 ann 韻、a 韻、ang 韻、ong 韻、i 韻）：
+          </div>
+          <div class="flex flex-wrap gap-1.5" id="studio-subrhyme-tags"></div>
+        </div>
+
+        <!-- 第三排：即時匹配押韻詞彙膠囊列 -->
+        <div class="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-slate-700" id="studio-box-status-title">
+              <i class="fa-solid fa-sparkles text-amber-500 mr-1"></i>精選押韻詞彙（點擊直接插入左側歌詞編輯器）：
+            </span>
+            <button onclick="resetAllDictFilters()" class="text-[11px] text-slate-500 hover:text-taigi-700 underline">
+              重置篩選
+            </button>
+          </div>
+          <div id="studio-quick-words" class="flex flex-wrap gap-2 max-h-[190px] overflow-y-auto pr-1"></div>
+        </div>
+      </div>
+
     </div>
 
     <!-- ========================================== -->
@@ -2031,11 +2078,12 @@
     let showAllSubRhymes = false;
     let lastSubRhymesCache = [];
 
-    // 渲染主題分類標籤
+    // 渲染主題分類標籤（同步更新辭典分頁與寫歌工作台百寶箱）
     function renderDictCategoryTags(categories) {
-      const container = document.getElementById('dict-category-tags');
-      if (!container) return;
-      container.innerHTML = '';
+      ['dict-category-tags', 'studio-category-tags'].forEach(cid => {
+        const container = document.getElementById(cid);
+        if (!container) return;
+        container.innerHTML = '';
 
       // 全部類別按鈕
       const allBtn = document.createElement('button');
@@ -2072,6 +2120,7 @@
         btn.innerHTML = `<span>${icon} ${cat.name}</span>${badgeHtml}`;
         btn.onclick = () => toggleCategoryFilter(cat.name);
         container.appendChild(btn);
+      });
       });
     }
 
@@ -2111,12 +2160,13 @@
       });
     }
 
-    // 渲染精確韻腳 / 子韻母標籤 (帶即時詞數徽章與展開全部功能)
+    // 渲染精確韻腳 / 子韻母標籤 (同步更新辭典分頁與寫歌工作台百寶箱)
     function renderDictSubRhymeTags(subRhymes) {
       lastSubRhymesCache = subRhymes || [];
-      const container = document.getElementById('dict-subrhyme-tags');
-      if (!container) return;
-      container.innerHTML = '';
+      ['dict-subrhyme-tags', 'studio-subrhyme-tags'].forEach(cid => {
+        const container = document.getElementById(cid);
+        if (!container) return;
+        container.innerHTML = '';
 
       // 全部子韻腳按鈕
       const allBtn = document.createElement('button');
@@ -2159,6 +2209,7 @@
         };
         container.appendChild(moreBtn);
       }
+      });
     }
 
     // 渲染已套用篩選狀態列 Chips
@@ -2265,6 +2316,7 @@
         const res = await fetch(`/api/dictionary?${params.toString()}`);
         const data = await res.json();
         
+        renderStudioQuickWords(data);
         document.getElementById('dict-total-count').textContent = data.total;
         document.getElementById('dict-current-page').textContent = Math.floor(currentDictOffset / dictLimit) + 1;
 
@@ -2377,9 +2429,109 @@
       onLyricsChange();
     }
 
+    // 渲染寫歌工作台底部的快速詞彙膠囊
+    function renderStudioQuickWords(data) {
+      const boxCount = document.getElementById('studio-box-total-count');
+      if (boxCount) boxCount.textContent = data.total || 0;
+
+      const titleEl = document.getElementById('studio-box-status-title');
+      if (titleEl) {
+        const parts = [];
+        if (selectedCategoryFilter) parts.push(`【${DICT_CATEGORY_ICONS[selectedCategoryFilter] || ''}${selectedCategoryFilter}】`);
+        if (selectedRhymeGroupFilter) parts.push(`【${selectedRhymeGroupFilter}】`);
+        if (selectedSubRhymeFilter) parts.push(`【${selectedSubRhymeFilter} 韻】`);
+        const filterDesc = parts.length > 0 ? parts.join(' + ') : '全部領域';
+        const fbNote = data.is_fallback_group ? ` <span class="text-teal-700 font-normal">（已自動展開 ${data.fallback_group} 同部通押）</span>` : '';
+        titleEl.innerHTML = `<i class="fa-solid fa-sparkles text-amber-500 mr-1"></i>${filterDesc} 匹配詞目（共 ${data.total} 筆，點擊詞彙直接加進歌詞）${fbNote}：`;
+      }
+
+      const container = document.getElementById('studio-quick-words');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const words = data.words || [];
+      if (words.length === 0) {
+        container.innerHTML = `<span class="text-xs text-slate-400 py-2">暫無符合條件的詞目</span>`;
+        return;
+      }
+
+      words.slice(0, 30).forEach(w => {
+        const btn = document.createElement('button');
+        const isOptTone = (w.tone === 1 || w.tone === 5);
+        const toneTag = w.tone ? (isOptTone ? `🌟${w.tone}調` : `${w.tone}調`) : '';
+        const catFirst = (w.categories || '').split(/[、,]/)[0] || '';
+        const catIcon = DICT_CATEGORY_ICONS[catFirst] || '';
+        btn.className = `px-2.5 py-1.5 rounded-xl text-xs bg-white hover:bg-taigi-50 border ${isOptTone ? 'border-emerald-200 hover:border-emerald-400' : 'border-slate-200 hover:border-taigi-400'} shadow-2xs transition flex items-center gap-1.5 group`;
+        btn.title = `${w.hanji} (${w.tailo}) [${w.rhyme_group} / ${w.last_rhyme}韻]
+分類：${w.categories || ''}
+釋義：${w.definition || ''}
+（點擊直接插入歌詞編輯器）`;
+        btn.innerHTML = `
+          <span class="text-[11px]">${catIcon}</span>
+          <span class="font-serif font-bold text-slate-900 text-sm group-hover:text-taigi-700">${w.hanji}</span>
+          <span class="font-mono text-[10px] text-slate-400">${w.last_rhyme || ''}</span>
+          ${toneTag ? `<span class="text-[10px] px-1 rounded ${isOptTone ? 'bg-emerald-50 text-emerald-700 font-semibold' : 'bg-slate-100 text-slate-500'}">${toneTag}</span>` : ''}
+        `;
+        btn.onclick = () => insertWordIntoLyrics(w.hanji);
+        container.appendChild(btn);
+      });
+    }
+
+    // ==========================================
+    // 13 大韻部指南渲染 (Guide Grid)
+    // ==========================================
+    function renderGuideGrid() {
+      const container = document.getElementById('rhyme-groups-guide-grid');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const TYPE_NAMES = {
+        open: "開尾韻 / 複元音",
+        nasal: "陽聲韻 (鼻音收尾)",
+        stop: "入聲韻 (塞音收尾)"
+      };
+
+      for (const [gid, info] of Object.entries(rhymeGroupsData)) {
+        const card = document.createElement('div');
+        const badgeClass = `badge-${gid}`;
+        card.className = "bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between";
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-1 rounded-lg text-xs font-bold border ${badgeClass}">${gid}</span>
+              <span class="text-xs text-slate-400 font-medium">${TYPE_NAMES[info.type] || info.type}</span>
+            </div>
+            <h3 class="text-base font-bold text-slate-900 mt-2">${info.description}</h3>
+
+            <div class="mt-3">
+              <div class="text-xs text-slate-400 mb-1.5">包含韻母（點擊韻母可反查詞彙）：</div>
+              <div class="flex flex-wrap gap-1">
+                ${(info.variants || []).map(v => `<button onclick="filterDictBySubRhyme('${gid}', '${v}')" class="px-2 py-0.5 text-xs font-mono rounded bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 text-slate-700 border border-slate-200 transition">${v}</button>`).join('')}
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 mt-4 flex justify-between items-center">
+            <button onclick="filterDictByGroup('${gid}')" class="text-xs text-taigi-600 hover:text-taigi-800 font-medium flex items-center gap-1 transition">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i> 查看此韻所有辭典詞彙
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      }
+    }
+
     function filterDictByGroup(gid) {
       selectedRhymeGroupFilter = gid;
       selectedSubRhymeFilter = '';
+      switchTab('dictionary');
+      fetchDictionaryFacets();
+      loadDictionaryWords(0);
+    }
+
+    function filterDictBySubRhyme(gid, subRhyme) {
+      selectedRhymeGroupFilter = '';
+      selectedSubRhymeFilter = subRhyme;
       switchTab('dictionary');
       fetchDictionaryFacets();
       loadDictionaryWords(0);
